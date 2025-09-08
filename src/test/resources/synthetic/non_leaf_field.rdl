@@ -1,0 +1,5 @@
+reg R2 {
+    field {
+         field {} In[1:1];
+    } Ou[8:8];
+};

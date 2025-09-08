@@ -1,0 +1,16 @@
+.idea
+.gradle
+bin
+build
+.settings
+dist
+.project
+.classpath
+.antProperties.xml
+Module.manifest
+run
+*.pyc
+*.sw*
+venv/
+.venv/
+docs/build/

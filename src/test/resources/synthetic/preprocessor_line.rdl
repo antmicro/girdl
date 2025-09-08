@@ -1,0 +1,7 @@
+
+reg {
+    first = `__LINE__;
+
+    `line 4000 "some_file" 1
+    second = `__LINE__;
+};

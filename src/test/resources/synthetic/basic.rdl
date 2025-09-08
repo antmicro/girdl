@@ -1,0 +1,11 @@
+reg A {
+
+    struct S {
+        longint a;
+        longint b;
+    };
+
+    field {} a[1:8];
+    S s;
+
+};

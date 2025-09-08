@@ -1,0 +1,5 @@
+addrmap I3CCSR {
+
+    signal {activelow; async; cpuif_reset; field_reset;} rst_ni;
+
+};

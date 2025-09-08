@@ -1,0 +1,9 @@
+
+addrmap A {
+
+    reg {
+
+    // invalid - range only allowed for signal and field
+    } b [1:3];
+
+};

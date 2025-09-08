@@ -1,0 +1,10 @@
+addrmap Nested {
+
+    reg A #(longint start = 0, longint end) {
+        field {} Fa[start : end];
+    };
+
+    A #(.end(10)) a;
+    A #(.start(10), .end(20)) b;
+
+};

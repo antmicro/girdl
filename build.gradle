@@ -1,0 +1,58 @@
+
+plugins {
+	id 'checkstyle'
+}
+
+if (System.env.GHIDRA_INSTALL_DIR) {
+	project.ext.ghidraPath = System.env.GHIDRA_INSTALL_DIR
+} else if (project.hasProperty("GHIDRA_INSTALL_DIR")) {
+	project.ext.ghidraPath = project.getProperty("GHIDRA_INSTALL_DIR")
+} else {
+	throw new GradleException("Ghidra path not set! Set the 'GHIDRA_INSTALL_DIR' environment variable!")
+}
+
+checkstyle {
+	toolVersion = "11.0.0"
+	ignoreFailures = false
+	maxWarnings = 0
+}
+
+task distributeExtension {
+	group = "Ghidra"
+
+	apply from: "extension.gradle"
+	dependsOn ':buildExtension'
+}
+
+task applyExtension {
+	group = "Ghidra"
+	dependsOn ':distributeExtension'
+
+	var target = new File(project.ext.ghidraPath).getCanonicalPath() + "/Extensions/Ghidra"
+
+	copy {
+		from "dist/girdl.zip"
+		into target
+		duplicatesStrategy = DuplicatesStrategy.INCLUDE
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	checkstyle "com.puppycrawl.tools:checkstyle:${checkstyle.toolVersion}"
+}
+
+tasks.named('test', Test) {
+	useJUnitPlatform()
+	maxHeapSize = '1G'
+
+	testLogging {
+		events "passed"
+		events "skipped"
+	}
+}

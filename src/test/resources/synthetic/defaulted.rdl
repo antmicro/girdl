@@ -1,0 +1,4 @@
+regfile Foo {
+    default regwidth = 32;
+    name = "hi";
+};

@@ -1,0 +1,6 @@
+
+addrmap MyReg {};
+
+MyReg a;
+MyReg b;
+MyReg c;

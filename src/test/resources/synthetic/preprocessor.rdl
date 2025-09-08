@@ -1,0 +1,45 @@
+
+`define FIRST
+
+// first
+
+`ifdef FIRST
+    token_first_1
+    `undef FIRST
+`endif
+
+`ifdef FIRST
+    token_first_2
+`endif
+
+`ifndef FIRST
+    token_first_3
+`endif
+
+// second
+
+`ifdef SECOND
+    token_second_1
+    `undef SECOND
+`endif
+
+`ifdef SECOND
+    token_second_2
+`endif
+
+`ifndef SECOND
+    token_second_3
+`endif
+
+// chain
+
+`define A
+`define B
+
+`ifdef C
+    token_c
+`elsif B
+    token_b
+`elsif A
+    token_a
+`endif

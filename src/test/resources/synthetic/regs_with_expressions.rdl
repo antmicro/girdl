@@ -1,0 +1,15 @@
+addrmap ABRTCMC {
+
+    addrmap Inner {
+
+        reg {
+            regwidth = 2 + 2 ** 2 * (2 + 1) / 2;
+
+            field {
+                sw = r;
+            } CAP[0:7];
+        } Reg @ 0x0;
+
+    };
+
+};

@@ -1,0 +1,3 @@
+[submodule "src/test/resources/i3c"]
+	path = src/test/resources/i3c
+	url = https://github.com/chipsalliance/i3c-core

@@ -1,0 +1,13 @@
+reg R1 {
+    field {} E[15:15];
+    field {} D[14:14];
+    field {} C[13:13];
+    field {} B[12:12];
+    field {} A[5:5];
+};
+
+reg R2 {
+    field {} A[8:8];
+    field {} B[7:5];
+    field {} C[2:2];
+};

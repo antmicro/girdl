@@ -1,0 +1,7 @@
+struct struct_1 {
+    string foo;
+};
+
+struct struct_2 {
+    struct_1 inner;
+};

@@ -1,0 +1,38 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<HTML>
+  <HEAD>
+    <META name="generator" content="HTML Tidy for Java (vers. 2009-12-01), see jtidy.sourceforge.net">
+    <META http-equiv="Content-Language" content="en-us">
+    <META http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    <META name="GENERATOR" content="Microsoft FrontPage 4.0">
+    <META name="ProgId" content="FrontPage.Editor.Document">
+
+    <TITLE>Peripheral Registers Extension</TITLE>
+    <LINK rel="stylesheet" type="text/css" href="help/shared/DefaultStyle.css">
+  </HEAD>
+
+  <BODY>
+    <H1><a name="Main"></a>Peripheral Registers Extension</H1>
+    <P>
+      When you begin file analysis (with the plugin enabled) in the "Analysis Options" popup scroll to
+      "Peripheral Registers" and specify the path to a file providing the definitions of peripherals present in
+      your program, in case of SVD files - this is a single file, but if you are importing this data from Renode
+      you will need to provide two paths, one for the peripheral definitions and one for their instantiation (a <A href="#PeripheralMaps">Peripheral Map File</A>).
+    </P>
+
+    <H2><A name="RegisterDefinitions"></A>Peripheral Definitions</H2>
+    <P>
+      The plugin can be pointed to a .svd or Renode RMA .json file to load the peripherals, as often you will need to
+      load multiple files the plugin accepts selecting a directory or an archive (.zip, .tar, .tar.gz, .tar.xz, .7z)
+      and will recursively load all files from it. You can also specify a link to a remote archive, but it must be
+      prefixed with http:// or https://, the plugin will then download that archive and recurse into it.
+    </P>
+
+    <H2><A name="PeripheralMaps"></A>Peripheral Maps</H2>
+    <P>
+      In some cases two files need to be supplied. You can either place them in a shared directory or archive them
+      together. Additionally, if the files are not in the same location you can use the second data source chooser.
+    </P>
+  </BODY>
+</HTML>

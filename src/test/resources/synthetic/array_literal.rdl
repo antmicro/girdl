@@ -1,0 +1,3 @@
+reg r1 {
+    s1p = array_type'{"hello", "world"};
+};

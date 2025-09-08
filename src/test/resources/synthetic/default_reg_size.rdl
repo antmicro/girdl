@@ -1,0 +1,18 @@
+regfile F {
+
+    default regwidth = 32;
+
+    reg A {
+        field {} a[1:1];
+    } aa;
+
+    reg B {
+        field {} b[1:1];
+    } bb;
+
+    reg C {
+        regwidth = 16;
+        field {} c[1:1];
+    } cc;
+
+};

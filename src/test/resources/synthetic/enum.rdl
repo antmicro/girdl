@@ -1,0 +1,15 @@
+enum myBitFieldEncoding {
+    first_encoding_entry = 8'hab;
+    second_entry = 8'hcd {
+        name = "second entry";
+    };
+    third_entry = 8'hef {
+        name = "third entry, just like others";
+        desc = "this value has a special documentation";
+    };
+    fourth_entry = 8'b10010011;
+};
+
+field {
+    encode = myBitFieldEncoding;
+} a[8];

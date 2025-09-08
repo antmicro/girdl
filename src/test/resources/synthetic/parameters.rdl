@@ -1,0 +1,12 @@
+reg myReg #(longint unsigned SIZE, boolean SHARED = true) {
+    regwidth = SIZE;
+    shared = SHARED;
+    field {} data[SIZE - 1];
+};
+
+addrmap myAmap {
+    //myReg reg32;
+    //myReg reg32_arr[8];
+    myReg #(.SIZE(16)) reg16;
+    myReg #(.SIZE(8), .SHARED(false)) reg8;
+};

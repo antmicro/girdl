@@ -1,0 +1,8 @@
+struct struct_1 {
+    bool a;
+    string b;
+};
+
+reg r1 {
+    s1p = struct_1'{a:true, b:"hello"};
+};

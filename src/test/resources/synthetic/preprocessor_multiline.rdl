@@ -1,0 +1,7 @@
+`define ABC reg { \
+    name = "funny"; \
+    };
+
+addrmap {
+    `ABC
+};
