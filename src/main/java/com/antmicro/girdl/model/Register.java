@@ -15,13 +15,11 @@
  */
 package com.antmicro.girdl.model;
 
+import com.antmicro.girdl.model.type.ArrayNode;
+import com.antmicro.girdl.model.type.BaseNode;
+import com.antmicro.girdl.model.type.BitsNode;
+import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.util.Lazy;
-import ghidra.app.util.bin.StructConverter;
-import ghidra.program.model.data.AbstractUnsignedIntegerDataType;
-import ghidra.program.model.data.ArrayDataType;
-import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.StructureDataType;
-import ghidra.util.UniversalIdGenerator;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import java.util.ArrayList;
@@ -47,7 +45,7 @@ public class Register implements Comparable<Register> {
 	private int count = 1;
 
 	private String description = "";
-	private final Lazy<DataType> type = new Lazy<>();
+	private final Lazy<TypeNode> type = new Lazy<>();
 
 	public Register(String name, long offset) {
 		this.name = name;
@@ -89,67 +87,55 @@ public class Register implements Comparable<Register> {
 		return filled;
 	}
 
-	private DataType createUnderlyingDataType(int bytes) {
-
-		// this is needed to avoid exceptions being thrown in tests
-		UniversalIdGenerator.initialize();
-
-		// try to assign some sensible data type
-		if (bytes == 8) return StructConverter.QWORD;
-		if (bytes == 4) return StructConverter.DWORD;
-		if (bytes == 2) return StructConverter.WORD;
-		if (bytes == 1) return StructConverter.BYTE;
+	private BaseNode createUnderlyingDataType(int bytes) {
 
 		// empty registers should not exist and are most often caused by RMA failing to deduce register size
 		// we try to eliminate some of them ourselves but that is not a silver bullet, e.g. when the last register has no size
 		// we can't let the type be empty so just fallback to a byte
-		if (bytes == 0) return StructConverter.BYTE;
+		if (bytes == 0) {
+			return BaseNode.BYTE;
+		}
 
-		// otherwise use whatever fits
-		return new ArrayDataType(StructConverter.BYTE, bytes);
+		return BaseNode.of(bytes);
 
 	}
 
-	private DataType createBaseDataType(int bytes) {
+	private TypeNode createBaseDataType(int bytes) {
 
-		DataType underlying = createUnderlyingDataType(bytes);
+		BaseNode underlying = createUnderlyingDataType(bytes);
 
-		// if we have a non-array underlying type we can try further expanding the fields
-		if (underlying instanceof AbstractUnsignedIntegerDataType) {
+		if (underlying.isOfIntegralSize()) {
 
 			List<Field> fields = getFields();
 
-			if (!fields.isEmpty()) {
-				try {
-					StructureDataType struct = new StructureDataType(name, 0);
-					struct.setPackingEnabled(true);
-
-					for (Field field : fields) {
-						struct.addBitField(underlying, (int) field.size, field.name, field.description);
-					}
-
-					return struct;
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+			if (fields.isEmpty()) {
+				return underlying;
 			}
+
+			BitsNode bitfield = BitsNode.of(underlying);
+
+			for (Field field : fields) {
+				bitfield.addField((int) field.size, field.name, field.description);
+			}
+
+			return bitfield;
 		}
 
 		return underlying;
 	}
 
-	private DataType createFullDataType() {
+	private TypeNode createFullDataType() {
 
-		final DataType base = createBaseDataType(size);
+		final TypeNode base = createBaseDataType(size);
 
 		if (count == 1) {
 			return base;
 		}
 
-		return new ArrayDataType(base, count);
+		return ArrayNode.of(base, count);
 	}
 
-	public DataType getType() {
+	public TypeNode getType() {
 		return type.getOrCompute(this::createFullDataType);
 	}
 

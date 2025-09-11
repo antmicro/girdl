@@ -18,7 +18,6 @@ package com.antmicro.girdl.data;
 import com.antmicro.girdl.data.rdl.ParseError;
 import com.antmicro.girdl.data.rdl.RenodeRdl;
 import com.antmicro.girdl.data.rdl.compiler.Compiler;
-import com.antmicro.girdl.data.rdl.compiler.ModelNode;
 import com.antmicro.girdl.data.rdl.compiler.Scope;
 import com.antmicro.girdl.data.rdl.compiler.model.ComponentType;
 import com.antmicro.girdl.data.rdl.compiler.model.ComponentValue;

@@ -17,7 +17,6 @@ package com.antmicro.girdl.data.rdl;
 
 import com.antmicro.girdl.data.rdl.lexer.SymbolPredicate;
 import com.antmicro.girdl.data.rdl.parser.TokenPredicate;
-import groovyjarjarantlr4.v4.runtime.misc.Nullable;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -104,16 +103,31 @@ public final class ParseError extends RuntimeException {
 			return setDetail("is currently unimplemented");
 		}
 
-		public Builder setDetail(@Nullable String detail) {
+		/**
+		 * Alternative to the "expected" part, will be printed wth no prefix.
+		 *
+		 * @param detail Optional, null can be used if there is no detail.
+		 */
+		public Builder setDetail(String detail) {
 			this.detail = detail;
 			return this;
 		}
 
-		public Builder setUnexpected(@Nullable Token token) {
+		/**
+		 * Sets the "unexpected X" path of the error message.
+		 *
+		 * @param token Optional, null can be used if there is no unexpected element.
+		 */
+		public Builder setUnexpected(Token token) {
 			return token == null ? setUnexpected((String) null) : setUnexpected("token " + ParseUtil.quote(token.lexeme));
 		}
 
-		public Builder setExpected(@Nullable TokenPredicate predicate) {
+		/**
+		 * Sets the "expected X" path of the error message.
+		 *
+		 * @param predicate Optional, null can be used if there is no expected element.
+		 */
+		public Builder setExpected(TokenPredicate predicate) {
 			return predicate == null ? setExpected((String) null) : setExpected(predicate.description.get());
 		}
 
@@ -130,30 +144,60 @@ public final class ParseError extends RuntimeException {
 			return setExpected(predicates.stream().map(TokenPredicate::getDescription).distinct().collect(Collectors.joining(", ")));
 		}
 
-		public Builder setExpected(@Nullable SymbolPredicate symbol) {
+		/**
+		 * Sets the "expected X" path of the error message.
+		 *
+		 * @param symbol Optional, null can be used if there is no expected element.
+		 */
+		public Builder setExpected(SymbolPredicate symbol) {
 			return symbol == null ? setExpected((String) null) : setExpected(symbol.description);
 		}
 
+		/**
+		 * Sets the "unexpected X" path of the error message.
+		 *
+		 * @param unexpected The character that was not unexpected
+		 */
 		public Builder setUnexpected(char unexpected) {
 			return setUnexpected(SymbolPredicate.charToDescription(unexpected));
 		}
 
-		public Builder setExpected(@Nullable String expected) {
+		/**
+		 * Sets the "expected X" path of the error message.
+		 *
+		 * @param expected Optional, null can be used if there is no expected element.
+		 */
+		public Builder setExpected(String expected) {
 			this.expected = expected;
 			return this;
 		}
 
-		public Builder setUnexpected(@Nullable String unexpected) {
+		/**
+		 * Sets the "unexpected X" path of the error message.
+		 *
+		 * @param unexpected Optional, null can be used if there is no unexpected element.
+		 */
+		public Builder setUnexpected(String unexpected) {
 			this.unexpected = unexpected;
 			return this;
 		}
 
-		public Builder setAfter(@Nullable String after) {
+		/**
+		 * Sets the "after X" path of the error message.
+		 *
+		 * @param after Optional, null can be used if there is no 'after' element.
+		 */
+		public Builder setAfter(String after) {
 			this.after = after;
 			return this;
 		}
 
-		public Builder setAfter(@Nullable Token token) {
+		/**
+		 * Sets the "after X" path of the error message.
+		 *
+		 * @param token Optional, null can be used if there is no 'after' element.
+		 */
+		public Builder setAfter(Token token) {
 			return token == null ? setAfter((String) null) : setAfter("token '" + token.lexeme + "'");
 		}
 

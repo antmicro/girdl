@@ -13,20 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.data.elf.enums;
 
-public final class MathHelper {
+public class ElfClass {
 
-	public static long alignUp(long value, long alignment) {
-		return alignment == 0 ? value : (value + (alignment - 1)) & -alignment;
-	}
-
-	public static boolean isPowerOfTwo(long value) {
-		return (value != 0) && ((value & (value - 1)) == 0);
-	}
-
-	public static long getPadding(long value, long alignment) {
-		return alignUp(value, alignment) - value;
-	}
+	public static final byte BIT_32 = 1; /// 32-bit architecture
+	public static final byte BIT_64 = 2; /// 64-bit architecture
 
 }

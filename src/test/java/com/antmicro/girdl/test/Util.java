@@ -16,14 +16,18 @@
 package com.antmicro.girdl.test;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.SystemUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.stream.Collectors;
 
 public final class Util {
 
@@ -58,6 +62,21 @@ public final class Util {
 
 		// it's not really critical so if the i3c-core hasn't been cloned just skip the test
 		Assumptions.assumeTrue(object.getClass().getResource("/i3c/LICENSE") != null, "I3C-core not available, to enable this test run 'git submodule update --init --recursive'");
+	}
+
+	public static String getCommandOutput(String... args) {
+
+		Assumptions.assumeTrue(SystemUtils.IS_OS_UNIX, "This test require an UNIX compatible OS");
+
+		try {
+			Process process = Runtime.getRuntime().exec(args);
+			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+			Assertions.assertEquals(0, process.waitFor());
+
+			return reader.lines().collect(Collectors.joining());
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 }

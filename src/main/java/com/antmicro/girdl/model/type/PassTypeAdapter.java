@@ -13,20 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.model.type;
 
-public final class MathHelper {
+public final class PassTypeAdapter implements Adapter<TypeNode> {
 
-	public static long alignUp(long value, long alignment) {
-		return alignment == 0 ? value : (value + (alignment - 1)) & -alignment;
+	public static final PassTypeAdapter INSTANCE = new PassTypeAdapter();
+
+	private PassTypeAdapter() {
+
 	}
 
-	public static boolean isPowerOfTwo(long value) {
-		return (value != 0) && ((value & (value - 1)) == 0);
+	@Override
+	public TypeNode adaptArray(ArrayNode type) {
+		return type;
 	}
 
-	public static long getPadding(long value, long alignment) {
-		return alignUp(value, alignment) - value;
+	@Override
+	public TypeNode adaptBase(BaseNode type) {
+		return type;
+	}
+
+	@Override
+	public TypeNode adaptBits(BitsNode type) {
+		return type;
+	}
+
+	@Override
+	public TypeNode adaptStruct(StructNode type) {
+		return type;
 	}
 
 }

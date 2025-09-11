@@ -34,6 +34,7 @@ import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.util.List;
+import java.util.Optional;
 
 public final class SvdImporter implements Importer {
 
@@ -105,7 +106,7 @@ public final class SvdImporter implements Importer {
 		});
 
 		// this will add, merge or ignore the peripheral depending on the already loaded data
-		context.addPeripheral(peripheral, name);
+		context.addPeripheral(peripheral, Optional.ofNullable(name));
 	}
 
 	private void parseRegisterBlockEntry(Peripheral peripheral, SvdRegisters set, SvdDevice root, PeripheralConfig config) {

@@ -15,18 +15,20 @@
  */
 package com.antmicro.girdl.data;
 
+import com.antmicro.girdl.data.elf.DwarfFile;
 import com.antmicro.girdl.data.rdl.Macro;
 import com.antmicro.girdl.model.Peripheral;
 import com.antmicro.girdl.model.RegisterInstance;
 import com.antmicro.girdl.util.ComparisonResult;
 import com.antmicro.girdl.util.Functional;
 import ghidra.util.Msg;
-import groovyjarjarantlr4.v4.runtime.misc.Nullable;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class Context {
 
@@ -46,7 +48,7 @@ public class Context {
 	 * @param peripheral The peripheral to add or merge into the context
 	 * @param fallbackUniqueName Optional, alternative name for the peripheral if all else fails
 	 */
-	public void addPeripheral(Peripheral peripheral, @Nullable String fallbackUniqueName) {
+	public void addPeripheral(Peripheral peripheral, Optional<String> fallbackUniqueName) {
 		Peripheral other = peripherals.get(peripheral.name);
 
 		// no name collision has occurred, this is the first binding of a peripheral (in SVD) or a new peripheral
@@ -81,14 +83,14 @@ public class Context {
 
 		String duplicate = "Found another peripherals named '" + peripheral.name + "' with differing definition (" + result.message + ")";
 
-		if (fallbackUniqueName == null) {
+		if (fallbackUniqueName.isEmpty()) {
 			Msg.error(this, duplicate + ", as fallback unique name was not provided the peripheral will be dropped");
 			return;
 		}
 
 		// if we got here we need to use the binding name and create a separate peripheral
-		Msg.error(this, duplicate + ", using the fallback unique binding name '" + fallbackUniqueName + "'!");
-		peripheral.name = fallbackUniqueName;
+		Msg.error(this, duplicate + ", using the fallback unique binding name '" + fallbackUniqueName.get() + "'!");
+		peripheral.name = fallbackUniqueName.get();
 		peripherals.put(peripheral.name, peripheral);
 	}
 
@@ -103,6 +105,12 @@ public class Context {
 		peripherals.values().forEach(peripheral -> {
 			Functional.cartesian(peripheral.bindings, peripheral.registers).map(pair -> new RegisterInstance(pair.getLeft(), pair.getRight())).forEach(registers::add);
 		});
+	}
+
+	public void exportDwarf(File file, /* ElfMachine */ int machine, int bits) {
+		try (DwarfFile dwarf = new DwarfFile(file, machine, bits)) {
+			peripherals.values().forEach(dwarf::createPeripheral);
+		}
 	}
 
 	public Map<String, Peripheral> getPeripheralMap() {

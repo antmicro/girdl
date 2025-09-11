@@ -15,8 +15,6 @@
  */
 package com.antmicro.girdl.util;
 
-import groovyjarjarantlr4.v4.runtime.misc.Nullable;
-
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
@@ -36,7 +34,13 @@ public final class DataSource {
 		return this;
 	}
 
-	public DataSource addSource(@Nullable String source) {
+	/**
+	 * Adds a new source to the collection, but only when it is not empty not null,
+	 * in those cases it will be ignored.
+	 *
+	 * @param source Source to add, can be empty or null
+	 */
+	public DataSource addSource(String source) {
 		if (source != null && !source.isBlank()) {
 			sources.add(source);
 		}

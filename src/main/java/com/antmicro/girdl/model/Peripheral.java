@@ -15,17 +15,20 @@
  */
 package com.antmicro.girdl.model;
 
+import com.antmicro.girdl.model.type.Adapter;
+import com.antmicro.girdl.model.type.ArrayNode;
+import com.antmicro.girdl.model.type.BaseNode;
+import com.antmicro.girdl.model.type.StructNode;
+import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.util.ComparisonResult;
 import com.antmicro.girdl.util.Functional;
-import ghidra.program.model.data.ArrayDataType;
-import ghidra.program.model.data.ByteDataType;
-import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.StructureDataType;
 import ghidra.util.Msg;
 import ghidra.util.UniversalIdGenerator;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class Peripheral {
@@ -34,7 +37,9 @@ public class Peripheral {
 	private String description = "";
 	public final List<Binding> bindings = new ArrayList<>();
 	public final List<Register> registers = new ArrayList<>();
-	private StructureDataType type = null;
+	private StructNode type = null;
+
+	private Map<Adapter<?>, Object> cache = new IdentityHashMap<>();
 
 	public Peripheral(String name) {
 		this.name = name;
@@ -67,12 +72,12 @@ public class Peripheral {
 		List<Register> sorted = registers.stream().sorted().toList();
 		tryDeducingMissingRegisterSizes(sorted);
 
-		type = new StructureDataType(name, 0);
+		type = StructNode.of(name);
 		int offset = 0;
 		Register previous = null;
 
 		for (Register register : sorted) {
-			DataType field = register.getType();
+			TypeNode field = register.getType();
 
 			if (offset > register.offset) {
 				String previousString = (previous == null ? "<error: no previous>" : previous.toQualifiedString());
@@ -81,15 +86,15 @@ public class Peripheral {
 			}
 
 			if (offset < register.offset) {
-				long padding = register.offset - offset;
-				type.add(new ArrayDataType(ByteDataType.dataType, (int) padding), "pad_" + padding, "Padding deduced from register offsets");
-				offset += (int) padding;
+				int padding = (int) register.offset - offset;
+				type.addField(ArrayNode.of(BaseNode.BYTE, padding), "pad_" + padding, "Padding deduced from register offsets");
+				offset += padding;
 			}
 
-			type.add(register.getType(), register.name, register.getDescription());
+			type.addField(register.getType(), register.name, register.getDescription());
 			previous = register;
 
-			offset += field.getLength();
+			offset += field.size();
 		}
 	}
 
@@ -159,8 +164,9 @@ public class Peripheral {
 		bindings.addAll(pending);
 	}
 
-	public DataType getType() {
-		return type;
+	@SuppressWarnings("unchecked")
+	public <T> T getType(Adapter<T> adapter) {
+		return (T) cache.computeIfAbsent(adapter, visitor -> type.adapt(visitor));
 	}
 
 	@Override

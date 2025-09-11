@@ -36,6 +36,7 @@ import ghidra.util.Msg;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Optional;
 
 public final class RdlImporter implements Importer {
 
@@ -134,7 +135,7 @@ public final class RdlImporter implements Importer {
 		// needed if the registers are placed not in an addrmap but directly within the component
 		tryLoadingRegisterSet(0, peripheral, "<implicit>", component);
 
-		context.addPeripheral(peripheral, null);
+		context.addPeripheral(peripheral, Optional.empty());
 	}
 
 	public void tryLoadAddressMap(Context context, ComponentType component) {

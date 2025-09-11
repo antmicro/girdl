@@ -13,20 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.model.type;
 
-public final class MathHelper {
+public interface Adapter<T> {
 
-	public static long alignUp(long value, long alignment) {
-		return alignment == 0 ? value : (value + (alignment - 1)) & -alignment;
-	}
-
-	public static boolean isPowerOfTwo(long value) {
-		return (value != 0) && ((value & (value - 1)) == 0);
-	}
-
-	public static long getPadding(long value, long alignment) {
-		return alignUp(value, alignment) - value;
-	}
+	T adaptArray(ArrayNode type);
+	T adaptBase(BaseNode type);
+	T adaptBits(BitsNode type);
+	T adaptStruct(StructNode type);
 
 }

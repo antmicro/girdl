@@ -61,7 +61,7 @@ public final class JsonRegisterImporter extends JsonImporter {
 		// 1. We don't have any available
 		// 2. In JSON import if something is duplicated we should probably just ignore or merge it
 		Msg.trace(this, "Created peripheral " + peripheral.name);
-		context.addPeripheral(peripheral, null);
+		context.addPeripheral(peripheral, Optional.empty());
 	}
 
 	private void parseArray(JsonArray array, Peripheral peripheral) {

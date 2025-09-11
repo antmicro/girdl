@@ -16,7 +16,6 @@
 package com.antmicro.girdl.util.file;
 
 import ghidra.formats.gfilesystem.GFile;
-import groovyjarjarantlr4.v4.runtime.misc.Nullable;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -27,23 +26,43 @@ import java.nio.file.Paths;
 
 public sealed abstract class Resource permits GhidraFile, JavaFile {
 
-	public static Resource fromJavaFile(@Nullable File file) {
+	/**
+	 * Create a resource backed by a Java File,
+	 * silently returns null if given a null value.
+	 */
+	public static Resource fromJavaFile(File file) {
 		return file == null ? null : new JavaFile(file);
 	}
 
-	public static Resource fromGhidraFile(@Nullable GFile file) {
+	/**
+	 * Create a resource backed by a Ghidra File,
+	 * silently returns null if given a null value.
+	 */
+	public static Resource fromGhidraFile(GFile file) {
 		return file == null ? null : new GhidraFile(file);
 	}
 
-	public static Resource fromLocalPath(@Nullable String path) {
+	/**
+	 * Create a resource from a string path,
+	 * silently returns null if given a null value.
+	 */
+	public static Resource fromLocalPath(String path) {
 		return path == null ? null : fromJavaFile(new File(path));
 	}
 
-	public static Resource fromUniversalPath(@Nullable String path) {
+	/**
+	 * Create a resource from a string universal path (path with protocol),
+	 * silently returns null if given a null value.
+	 */
+	public static Resource fromUniversalPath(String path) {
 		return path == null ? null : (isRemote(path) ? RemoteCache.fetch(path) : fromLocalPath(path));
 	}
 
-	public static <T> Resource fromJavaResource(T object, @Nullable String path) {
+	/**
+	 * Create a resource from a Java Resource,
+	 * silently returns null if given a null value.
+	 */
+	public static <T> Resource fromJavaResource(T object, String path) {
 		if (path == null) {
 			return null;
 		}

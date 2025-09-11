@@ -1,6 +1,7 @@
 .idea
 .gradle
-bin
+bin/**
+lib/**
 build
 .settings
 dist

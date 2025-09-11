@@ -16,7 +16,6 @@
 package com.antmicro.girdl.util;
 
 import com.antmicro.girdl.data.rdl.ParseUtil;
-import groovyjarjarantlr4.v4.runtime.misc.Nullable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -36,7 +35,15 @@ public final class Reflect {
 
 	private static final int NON_SERIALIZABLE = Modifier.STATIC | Modifier.TRANSIENT;
 
-	public static <T> void resolveOptionals(T instance, @Nullable T from) {
+	/**
+	 * This functions copes (shallowly) optional values from one object to another.
+	 * For each optional member it tries to get the values from the same optional
+	 * from the other object.
+	 *
+	 * @param instance The object in which to "fill" optionals
+	 * @param from The object from which to "read" the optionals
+	 */
+	public static <T> void resolveOptionals(T instance, T from) {
 
 		if (from == null) {
 			return;
@@ -79,6 +86,20 @@ public final class Reflect {
 		if (superClass != null) {
 			forEveryField(superClass, consumer);
 		}
+	}
+
+	public static <T> void forEveryConstField(Class<T> clazz, Consumer<Field> consumer) {
+		forEveryField(clazz, field -> {
+
+			if ((field.getModifiers() & Modifier.TRANSIENT) != 0) {
+				return;
+			}
+
+			if ((field.getModifiers() & (Modifier.STATIC | Modifier.FINAL)) != 0) {
+				field.trySetAccessible();
+				consumer.accept(field);
+			}
+		});
 	}
 
 	public static <T> T tryCreateInstance(Class<T> clazz) {
@@ -187,6 +208,30 @@ public final class Reflect {
 				}
 			});
 		});
+	}
+
+	public static <T> String constValueName(Class<T> clazz, int value) {
+		Mutable<String> str = Mutable.wrap(null);
+
+		forEveryConstField(clazz, field -> {
+			if (tryRead(clazz, field) instanceof Integer i) {
+				if (value == i) str.value = field.getName();
+			}
+		});
+
+		return str.value;
+	}
+
+	public static <T> String constFlagName(Class<T> clazz, int value) {
+		List<String> flags = new ArrayList<>();
+
+		forEveryConstField(clazz, field -> {
+			if (tryRead(clazz, field) instanceof Integer i) {
+				if ((value & i) != 0) flags.add(field.getName());
+			}
+		});
+
+		return String.join(" | ", flags);
 	}
 
 	public static class PrintInfo<T> {

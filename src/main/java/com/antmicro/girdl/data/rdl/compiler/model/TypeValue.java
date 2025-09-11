@@ -17,7 +17,6 @@ package com.antmicro.girdl.data.rdl.compiler.model;
 
 import com.antmicro.girdl.data.rdl.ParseError;
 import com.antmicro.girdl.data.rdl.compiler.Scope;
-import groovyjarjarantlr4.v4.runtime.misc.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
@@ -41,9 +40,9 @@ public abstract class TypeValue extends Value {
 	}
 
 	/**
-	 * Query type by name.
+	 * Query type by name, can return null.
 	 */
-	public @Nullable TypeValue getType(String name) {
+	public TypeValue getType(String name) {
 		return types().get(name);
 	}
 

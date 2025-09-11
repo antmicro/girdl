@@ -21,7 +21,6 @@ import com.antmicro.girdl.data.rdl.compiler.Param;
 import com.antmicro.girdl.data.rdl.compiler.Scope;
 import com.antmicro.girdl.data.rdl.parser.ComponentKind;
 import com.antmicro.girdl.util.Lookup;
-import groovyjarjarantlr4.v4.runtime.misc.Nullable;
 
 import java.util.function.Function;
 
@@ -68,8 +67,11 @@ public class ParametricType extends CompositeType {
 	/**
 	 * Create a new type parameter, the optional initializer can be used to provide default
 	 * value that will be resolved during object implicitization.
+	 *
+	 * @param provider Default value initializer, can be null
+	 * @param location Source code location, can be null
 	 */
-	public void addParameter(String name, TypeValue type, @Nullable Param.Init provider, @Nullable Location location) {
+	public void addParameter(String name, TypeValue type, Param.Init provider, Location location) {
 		parameters.add(name, new Param(type, name, provider, location));
 	}
 

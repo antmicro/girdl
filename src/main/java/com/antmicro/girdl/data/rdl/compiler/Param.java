@@ -18,7 +18,6 @@ package com.antmicro.girdl.data.rdl.compiler;
 import com.antmicro.girdl.data.rdl.Location;
 import com.antmicro.girdl.data.rdl.compiler.model.TypeValue;
 import com.antmicro.girdl.data.rdl.compiler.model.Value;
-import groovyjarjarantlr4.v4.runtime.misc.Nullable;
 
 import java.util.Optional;
 
@@ -27,10 +26,14 @@ public final class Param extends ModelNode {
 	public final TypeValue type;
 	public final String name;
 
-	@Nullable
+	/// Default value initializer, can be null.
 	private transient final Init provider;
 
-	public Param(TypeValue type, String name, @Nullable Init provider, @Nullable Location location) {
+	/**
+	 * @param provider Default value initializer, can be null.
+	 * @param location Source code location, can be null.
+	 */
+	public Param(TypeValue type, String name, Init provider, Location location) {
 		this.type = type;
 		this.name = name;
 		this.provider = provider;

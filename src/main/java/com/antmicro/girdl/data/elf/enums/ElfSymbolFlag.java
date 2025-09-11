@@ -13,20 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.data.elf.enums;
 
-public final class MathHelper {
+public class ElfSymbolFlag {
 
-	public static long alignUp(long value, long alignment) {
-		return alignment == 0 ? value : (value + (alignment - 1)) & -alignment;
-	}
+	public static final int NOTYPE = 0;
+	public static final int OBJECT = 1;
+	public static final int FUNC = 2;
+	public static final int SECTION = 3;
+	public static final int FILE = 4;
 
-	public static boolean isPowerOfTwo(long value) {
-		return (value != 0) && ((value & (value - 1)) == 0);
-	}
-
-	public static long getPadding(long value, long alignment) {
-		return alignUp(value, alignment) - value;
-	}
+	// biding
+	public static final int LOCAL = 0 << 4; // we don't support using this binding, see sh_info specification
+	public static final int GLOBAL = 1 << 4;
+	public static final int WEAK = 2 << 4;
 
 }

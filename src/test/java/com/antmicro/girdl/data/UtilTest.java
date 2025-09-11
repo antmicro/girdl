@@ -15,11 +15,14 @@
  */
 package com.antmicro.girdl.data;
 
+import com.antmicro.girdl.data.elf.enums.ElfMachine;
+import com.antmicro.girdl.data.elf.enums.ElfSectionFlag;
 import com.antmicro.girdl.util.DataSource;
 import com.antmicro.girdl.util.Functional;
 import com.antmicro.girdl.util.IndexedIterator;
 import com.antmicro.girdl.util.MathHelper;
 import com.antmicro.girdl.util.Mutable;
+import com.antmicro.girdl.util.Reflect;
 import com.antmicro.girdl.util.TreePrinter;
 import com.antmicro.girdl.util.file.Resource;
 import org.apache.commons.lang3.tuple.Pair;
@@ -117,6 +120,7 @@ public class UtilTest {
 		Assertions.assertEquals(64, MathHelper.alignUp(63, 64));
 		Assertions.assertEquals(128, MathHelper.alignUp(65, 64));
 		Assertions.assertEquals(13, MathHelper.alignUp(13, 1));
+		Assertions.assertEquals(13, MathHelper.alignUp(13, 0));
 
 	}
 
@@ -158,6 +162,21 @@ public class UtilTest {
 
 		Assertions.assertEquals(1, list.size());
 		Assertions.assertEquals("Second", list.getFirst());
+
+	}
+
+	@Test
+	public void testReflectConstNames() {
+
+		Assertions.assertNull(Reflect.constValueName(ElfMachine.class, -1));
+
+		// const name
+		Assertions.assertEquals("RISCV", Reflect.constValueName(ElfMachine.class, ElfMachine.RISCV));
+		Assertions.assertEquals("X86_64", Reflect.constValueName(ElfMachine.class, ElfMachine.X86_64));
+
+		// flag name
+		Assertions.assertEquals("ALLOC", Reflect.constFlagName(ElfSectionFlag.class, ElfSectionFlag.ALLOC));
+		Assertions.assertEquals("MERGE | STRINGS", Reflect.constFlagName(ElfSectionFlag.class, ElfSectionFlag.MERGE | ElfSectionFlag.STRINGS));
 
 	}
 
