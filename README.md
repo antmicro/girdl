@@ -2,6 +2,8 @@
 
 Copyright (c) 2025 [Antmicro](https://www.antmicro.com)
 
+<img width="353" height="147" alt="girdl-logo-color" src="https://github.com/user-attachments/assets/8b41fafc-225b-4c11-b1bd-e24ae1df5e1d" />
+
 `girdl` is a plugin for [Ghidra](https://github.com/NationalSecurityAgency/ghidra) for automatic analysis of the binding of individual registers and their layouts.
 
 ## Building
