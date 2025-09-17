@@ -1,0 +1,48 @@
+name: girdl build
+on: [push, pull_request]
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Environment
+        run: ./script/ci/debian.sh
+
+      - name: Build
+        run: ./script/ci/gradle.sh applyExtension
+
+      - name: Checkstyle
+        run: ./script/ci/gradle.sh checkstyleMain
+
+      - name: Test
+        run: ./script/ci/gradle.sh test --rerun --stacktrace
+
+      - name: Documentation
+        run: ./script/ci/docs.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: girdl
+          path: |
+            dist/girdl.zip
+            docs/docs.tar
+
+      - name: Deploy Docs
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cp build/latex/*.pdf build/html/
+          cd build/html/
+          touch .nojekyll
+          git init
+          cp ../../.git/config ./.git/config
+          git add .
+          git config --local user.email "push@gha"
+          git config --local user.name "GHA"
+          git commit -am "update ${{ github.sha }}"
+          git push -u origin +HEAD:gh-pages
+          rm -rf .git
