@@ -8,6 +8,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Setup Environment
         run: ./script/ci/debian.sh
@@ -35,11 +37,10 @@ jobs:
       - name: Deploy Docs
         if: github.ref == 'refs/heads/main'
         run: |
-          cp build/latex/*.pdf build/html/
-          cd build/html/
+          cd docs/build/html/
           touch .nojekyll
           git init
-          cp ../../.git/config ./.git/config
+          cp ../../../.git/config ./.git/config
           git add .
           git config --local user.email "push@gha"
           git config --local user.name "GHA"
