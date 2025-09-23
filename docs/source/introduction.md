@@ -7,4 +7,5 @@ This documentation consists of the following chapters:
 * {doc}`basics` describes how to configure girdl with Ghidra
 * {doc}`sources` lists supported data formats
 * {doc}`types` describes analysis output
+* {doc}`standalone` describes the standalone mode
 * {doc}`development` provides a guide for developers

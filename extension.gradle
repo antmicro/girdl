@@ -46,6 +46,24 @@ file(ghidraDir + "/application.properties").withReader { reader ->
  ***************************************************************************************/
 checkGradleVersion()
 
+sourceSets {
+
+	// register help resources to be considered inputs to this project; when these resources change,
+	// this project will be considered out-of-date
+	ghidra {
+		resources {
+			srcDir 'src/ghidra/help'   // help .html files to be copied to the jar
+			srcDir 'build/help/ghidra' // generated help items (from the indexer); copied to the jar
+		}
+
+		runtimeClasspath = configurations.extensionApi
+		compileClasspath = configurations.extensionApi
+
+		runtimeClasspath += sourceSets.main.output
+		compileClasspath += sourceSets.main.output
+	}
+}
+
 task copyDependencies(type: Copy) {
 	group = "Ghidra Private"
 	from configurations.runtimeClasspath
@@ -68,11 +86,11 @@ compileJava {
 }
 
 dependencies {
-	api fileTree(dir: 'lib', include: "*.jar")
-	api fileTree(dir: ghidraDir + '/Framework', include: "**/*.jar")
-	api fileTree(dir: ghidraDir + '/Features', include: "**/*.jar")
-	api fileTree(dir: ghidraDir + '/Debug', include: "**/*.jar")
-	api fileTree(dir: ghidraDir + '/Processors', include: "**/*.jar")
+	extensionApi fileTree(dir: 'lib', include: "*.jar")
+	extensionApi fileTree(dir: ghidraDir + '/Framework', include: "**/*.jar")
+	extensionApi fileTree(dir: ghidraDir + '/Features', include: "**/*.jar")
+	extensionApi fileTree(dir: ghidraDir + '/Debug', include: "**/*.jar")
+	extensionApi fileTree(dir: ghidraDir + '/Processors', include: "**/*.jar")
 }
 	
 def DISTRIBUTION_DIR = file("dist")
@@ -90,6 +108,7 @@ task zipSource (type: Zip) {
 	// We MUST copy from a directory, and not just grab a list of source files.  
 	// This is the only way to preserve the directory structure.
 	it.from project.projectDir
+	it.include 'src/ghidra/java/'
 	it.include 'src/main/java/'
 }
 
@@ -118,12 +137,11 @@ task buildExtension (type: Zip) {
 	
 	from (project.jar) {
 		into pathInZip + "/lib"
-	} 
-		
+	}
+
 	from (project.projectDir) {
 		exclude 'build/**'
 		exclude '*.gradle'
-		exclude 'certification.manifest'
 		exclude 'dist/**'
 		exclude 'bin/**'
 		exclude 'src/**'
@@ -131,16 +149,16 @@ task buildExtension (type: Zip) {
 		exclude '.vscode/**'
 		exclude '.classpath'
 		exclude '.project'
+		exclude '.github'
+		exclude 'docs'
+		exclude 'config'
 		exclude '.pydevproject'
 		exclude '.settings/**'
-		exclude 'developer_scripts'
-		exclude '.antProperties.xml'
 		exclude 'gradlew'
 		exclude 'gradlew.bat'
 		exclude 'gradle/**'
 		exclude '.idea/**'
 		exclude 'ghidra/**'
-		exclude '.ci.yml'
 		exclude 'script/**'
 
 		into pathInZip
@@ -187,18 +205,6 @@ task buildExtension (type: Zip) {
  * Note: This code is derived from helpProject.gradle.   Required changes should
  *       be made to that file and then reapplied here.
 *********************************************************************************/
-
-sourceSets {
-
-	// register help resources to be considered inputs to this project; when these resources change,
-	// this project will be considered out-of-date
-	main {
-		resources {
-			srcDir 'src/main/help'   // help .html files to be copied to the jar
-			srcDir 'build/help/main' // generated help items (from the indexer); copied to the jar
-		}
-	}
-}
 
 // Turns the given file into a 'normalized' path using the Java Path API
 def normalize(File file) {
@@ -265,8 +271,8 @@ def getHelpInputsFromModule(String moduleDirPath, Set<File> results) {
 	
 	// add all desired directories now and filter later those that do not exist	
 	File moduleDir = new File(moduleDirPath) 
-	results.add(new File(moduleDir, 'src/main/resources')) // images		
-	results.add(new File(moduleDir, 'src/main/help'))      // html files
+	results.add(new File(moduleDir, 'src/ghidra/resources')) // images
+	results.add(new File(moduleDir, 'src/ghidra/help'))      // html files
 			
 	File dataDir = new File(moduleDir, 'data')               // theme properties files
 	if (dataDir.exists()) {
@@ -311,7 +317,7 @@ def hasJarHelp(File file) {
 tasks.register('cleanHelp') {
 	group = "Ghidra Private"
 	
-	File helpOutput = file('build/help/main/help')
+	File helpOutput = file('build/help/ghidra/help')
 	doFirst {
 		delete helpOutput
 	}
@@ -321,20 +327,20 @@ tasks.register('cleanHelp') {
 tasks.register('indexHelp', JavaExec) {
 	group = "Ghidra Private"
 
-	File helpRootDir = file('src/main/help/help')		
-	File outputFile = file("build/help/main/help/${project.name}_JavaHelpSearch")	
+	File helpRootDir = file('src/ghidra/help/help')
+	File outputFile = file("build/help/ghidra/help/${project.name}_JavaHelpSearch")
 
 	inputs.dir helpRootDir skipWhenEmpty()
 	outputs.dir outputFile
 	
-	classpath = sourceSets.main.runtimeClasspath
+	classpath = sourceSets.ghidra.runtimeClasspath
 	
 	mainClass = 'com.sun.java.help.search.Indexer'
 
 	doFirst {
 	
 		// gather up all the help files into a file collection
-		FileTree helpFiles = fileTree('src/main/help') {
+		FileTree helpFiles = fileTree('src/ghidra/help') {
 			include '**/*.htm'
 			include '**/*.html'
 		}
@@ -362,6 +368,8 @@ tasks.register('indexHelp', JavaExec) {
 	}
 }
 
+processGhidraResources.dependsOn 'indexHelp'
+
 
 // Task for building Ghidra help files 
 // 		- depends on the output from the help indexer
@@ -373,8 +381,8 @@ tasks.register('buildHelp', JavaExec) {
 
 	dependsOn 'indexHelp'
 
-	File helpRootDir = file('src/main/help/help')	
-	File outputDir = file('build/help/main/help')
+	File helpRootDir = file('src/ghidra/help/help')
+	File outputDir = file('build/help/ghidra/help')
 
 	onlyIf {
 		helpRootDir.exists()
@@ -386,11 +394,9 @@ tasks.register('buildHelp', JavaExec) {
 		inputs.files({
 			// Note: this must be done lazily in a closure since the classpath is not ready at 
 			// configuration time.
-			return getHelpInputs(sourceSets.main.runtimeClasspath.files)
+			return getHelpInputs(sourceSets.ghidra.runtimeClasspath.files)
 		})	
 	}
-
-
 
 	outputs.dir outputDir
 
@@ -412,14 +418,14 @@ tasks.register('buildHelp', JavaExec) {
 		//
 		// The classpath needs to include:
 		// 1) the jar of each dependent Module that has already been built
-		// 2) 'src/main/resources'
+		// 2) 'src/ghidra/resources'
 		// 
 	
 		// Each java project and its dependencies are needed to locate each Ghidra module.  Each
 		// module is scanned to find the theme properties files in the 'data' directories. 
-    	classpath += sourceSets.main.runtimeClasspath
+		classpath += sourceSets.ghidra.runtimeClasspath
 
-		classpath += files('src/main/resources')
+		classpath += files('src/ghidra/resources')
 
 		// To build help, the validator needs any other help content that this module may reference.
 		// Add each of these dependencies as an argument to the validator.
@@ -439,19 +445,31 @@ tasks.register('buildHelp', JavaExec) {
 	}
 }
 
+buildHelp.dependsOn 'processGhidraResources'
 
 
 // include the help into the module's jar
 jar {
     duplicatesStrategy = 'exclude'
-	from "build/help/main"		// include the generated help index files
-	from "src/main/help"		// include the help source files
+	from "build/help/ghidra"		// include the generated help index files
+	from "src/ghidra/help"		// include the help source files
+	from sourceSets.ghidra.output
 	archiveVersion = ""
+
+	doFirst {
+		manifest.attributes('Class-Path': configurations.runtimeClasspath.files.collect { it.name }.join(' '),)
+	}
+
+	manifest {
+		attributes(
+				'Main-Class': 'com.antmicro.girdl.Standalone'
+		)
+	}
+
 }
 
 // build the help whenever this module's jar file is built
 jar.dependsOn 'buildHelp'			
-
 
 /*********************************************************************************
  * End Help Build Code
@@ -498,15 +516,6 @@ String stripGlobalFilePath(File file) {
 	}
 	
 	return filePath 
-}
-/*********************************************************************************
- * Returns the current date formatted as yyyyMMdd.
- *********************************************************************************/
-def getCurrentDate() {
-
-	def date = new Date()
-	def formattedDate = date.format('yyyyMMdd')
-	return formattedDate
 }
 
 /*********************************************************************************

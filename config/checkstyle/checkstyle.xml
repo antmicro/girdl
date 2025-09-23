@@ -21,6 +21,8 @@
 
 <module name="Checker">
 
+	<module name="SuppressWithPlainTextCommentFilter"/>
+
 	<property name="severity" value="warning"/>
 	<property name="fileExtensions" value="java, properties, xml"/>
 

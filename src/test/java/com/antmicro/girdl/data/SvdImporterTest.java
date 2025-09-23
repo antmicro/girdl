@@ -20,7 +20,6 @@ import com.antmicro.girdl.data.xml.XmlHelper;
 import com.antmicro.girdl.model.Register;
 import com.antmicro.girdl.test.Util;
 import com.antmicro.girdl.util.file.Resource;
-import org.apache.commons.collections.CollectionUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -31,126 +30,6 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class SvdImporterTest {
-
-	@Test
-	public void testSvdImportSimple() {
-		File svd = Util.createTempFile(".svd");
-		PrintWriter writer = Util.getFileWriter(svd);
-
-		writer.println("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>");
-		writer.println("<device schemaVersion=\"1.1\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\" xs:noNamespaceSchemaLocation=\"CMSIS-SVD_Schema_1_1.xsd\">");
-		writer.println("	<name>testSvdImportSimple</name>");
-		writer.println("	<size>0x10</size>");
-		writer.println("	<peripherals>");
-		writer.println("		<peripheral>");
-		writer.println("			<name>Test</name>");
-		writer.println("			<baseAddress>0x100</baseAddress>");
-		writer.println("			<description>Description</description>");
-		writer.println("			<registers>");
-		writer.println("				<register>");
-		writer.println("					<name>A</name>");
-		writer.println("					<size>0x10</size>");
-		writer.println("					<addressOffset>0x0</addressOffset>");
-		writer.println("				</register>");
-		writer.println("				<register>");
-		writer.println("					<name>B</name>");
-		writer.println("					<size>0x10</size>");
-		writer.println("					<addressOffset>0x10</addressOffset>");
-		writer.println("				</register>");
-		writer.println("				<register>");
-		writer.println("					<name>C</name>");
-		writer.println("					<size>0x10</size>");
-		writer.println("					<addressOffset>0x20</addressOffset>");
-		writer.println("				</register>");
-		writer.println("			</registers>");
-		writer.println("		</peripheral>");
-		writer.println("	</peripherals>");
-		writer.println("</device>");
-		writer.close();
-
-		Context context = new Context();
-		Importer.of(Resource.fromJavaFile(svd)).load(context);
-		context.compile();
-
-		var registers = context.registers;
-
-		Assertions.assertEquals(3, registers.size());
-		Assertions.assertEquals("Description", registers.getFirst().binding.peripheral.getDescription());
-
-		Assertions.assertEquals(2, registers.get(0).register.getSize());
-		Assertions.assertEquals("A", registers.get(0).register.name);
-		Assertions.assertEquals(0x00, registers.get(0).register.offset);
-		Assertions.assertEquals(0x100, registers.get(0).getAbsoluteOffset());
-
-		Assertions.assertEquals(2, registers.get(1).register.getSize());
-		Assertions.assertEquals("B", registers.get(1).register.name);
-		Assertions.assertEquals(0x10, registers.get(1).register.offset);
-		Assertions.assertEquals(0x110, registers.get(1).getAbsoluteOffset());
-
-		Assertions.assertEquals(2, registers.get(2).register.getSize());
-		Assertions.assertEquals("C", registers.get(2).register.name);
-		Assertions.assertEquals(0x20, registers.get(2).register.offset);
-		Assertions.assertEquals(0x120, registers.get(2).getAbsoluteOffset());
-
-	}
-
-	@Test
-	public void testSvdImportAdvanced() {
-		File svd = Util.createTempFile(".svd");
-		PrintWriter writer = Util.getFileWriter(svd);
-
-		writer.println("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>");
-		writer.println("<device schemaVersion=\"1.1\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\" xs:noNamespaceSchemaLocation=\"CMSIS-SVD_Schema_1_1.xsd\">");
-		writer.println("	<name>testSvdImportAdvanced</name>");
-		writer.println("	<size>0x10</size>");
-		writer.println("	<peripherals>");
-		writer.println("		<peripheral>");
-		writer.println("			<baseAddress>0x100</baseAddress>");
-		writer.println("			<name>Name</name>");
-		writer.println("			<registers>");
-		writer.println("				<register>");
-		writer.println("					<name>A</name>");
-		writer.println("					<size>0x10</size>");
-		writer.println("					<addressOffset>0x0</addressOffset>");
-		writer.println("				</register>");
-		writer.println("				<register>");
-		writer.println("					<name>B</name>");
-		writer.println("					<description>Description</description>");
-		writer.println("					<size>0x10</size>");
-		writer.println("					<addressOffset>0x10</addressOffset>");
-		writer.println("				</register>");
-		writer.println("			</registers>");
-		writer.println("		</peripheral>");
-		writer.println("	</peripherals>");
-		writer.println("</device>");
-		writer.close();
-
-		Context context = new Context();
-		Importer.of(Resource.fromJavaFile(svd)).load(context);
-		context.compile();
-
-		var registers = context.registers;
-		Assertions.assertEquals(2, registers.size());
-
-		Assertions.assertTrue(CollectionUtils.isEqualCollection(registers.stream().map(Objects::toString).toList(), List.of(
-				"Name::A at 0x100",
-				"Name::B at 0x110"
-		)));
-
-		var map = context.getPeripheralMap();
-		Assertions.assertTrue(map.containsKey("Name"));
-
-		Assertions.assertEquals("", registers.get(0).register.getDescription());
-		Assertions.assertEquals(2, registers.get(0).register.getSize());
-		Assertions.assertEquals("A", registers.get(0).register.name);
-		Assertions.assertEquals(0x00, registers.get(0).register.offset);
-
-		Assertions.assertEquals("Description", registers.get(1).register.getDescription());
-		Assertions.assertEquals(2, registers.get(1).register.getSize());
-		Assertions.assertEquals("B", registers.get(1).register.name);
-		Assertions.assertEquals(0x10, registers.get(1).register.offset);
-
-	}
 
 	@Test
 	public void testSvdImportDerived() {

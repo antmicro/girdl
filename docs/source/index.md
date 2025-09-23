@@ -5,5 +5,6 @@ introduction
 basics
 sources
 types
+standalone
 development
 ```

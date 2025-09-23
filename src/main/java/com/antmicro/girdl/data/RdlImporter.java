@@ -30,9 +30,9 @@ import com.antmicro.girdl.data.rdl.parser.ast.RootNode;
 import com.antmicro.girdl.model.Peripheral;
 import com.antmicro.girdl.model.Register;
 import com.antmicro.girdl.util.DataSource;
-import com.antmicro.girdl.util.RecursiveTaskMonitor;
 import com.antmicro.girdl.util.file.Resource;
-import ghidra.util.Msg;
+import com.antmicro.girdl.util.log.Logger;
+import com.antmicro.girdl.util.task.RecursiveTaskMonitor;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -120,7 +120,7 @@ public final class RdlImporter implements Importer {
 			if (entry.getValue() instanceof ComponentValue sub) {
 				if (sub.type.kind == ComponentKind.ADDRESS_MAP) {
 					if (loaded) {
-						Msg.trace(this, "Found another register set (of instance name: '" + entry.getKey() + "') in peripheral " + name + ", ignoring!");
+						Logger.trace(this, "Found another register set (of instance name: '" + entry.getKey() + "') in peripheral " + name + ", ignoring!");
 						peripheral.addDescription("Skipped set '" + name + "'");
 					} else {
 						tryLoadingRegisterSet(0, peripheral, sub.type.name, sub);
@@ -145,7 +145,7 @@ public final class RdlImporter implements Importer {
 		try {
 			instance = (ComponentValue) component.create();
 		} catch (Exception e) {
-			Msg.warn(this, "Failed to instantiate address map: " + component.name + ". The type model printed below:");
+			Logger.warn(this, "Failed to instantiate address map: " + component.name + ". The type model printed below:");
 			component.dump();
 			throw e;
 		}
@@ -153,7 +153,7 @@ public final class RdlImporter implements Importer {
 		try {
 			tryLoadingPeripheral(context, component.name, instance);
 		} catch (Exception e) {
-			Msg.warn(this, "Failed to load address map as peripheral: " + component.name + ". The instantiated model printed below:");
+			Logger.warn(this, "Failed to load address map as peripheral: " + component.name + ". The instantiated model printed below:");
 			instance.dump();
 			throw e;
 		}
@@ -175,7 +175,7 @@ public final class RdlImporter implements Importer {
 			try {
 				compiler.compile(root);
 			} catch (Exception e) {
-				Msg.error(this, "Failed to compile AST into type model! The abstract syntax tree printed below:");
+				Logger.error(this, "Failed to compile AST into type model! The abstract syntax tree printed below:");
 				root.dump();
 				throw e;
 			}

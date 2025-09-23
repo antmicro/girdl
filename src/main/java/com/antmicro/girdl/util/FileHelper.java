@@ -17,6 +17,8 @@ package com.antmicro.girdl.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public final class FileHelper {
 
@@ -27,6 +29,26 @@ public final class FileHelper {
 
 			return file;
 		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static void copy(OutputStream output, InputStream input) {
+		try {
+			final int size = 4096;
+			byte[] buffer = new byte[size];
+
+			while (true) {
+
+				final int bytes = input.read(buffer, 0, size);
+
+				if (bytes < 0) {
+					break;
+				}
+
+				output.write(buffer, 0, bytes);
+			}
+		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}

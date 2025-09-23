@@ -28,7 +28,7 @@ else
   echo "Using Adoptium JDK 21"
 fi
 
-$SUDO apt -qqy install unzip wget binutils > /dev/null
+$SUDO apt -qqy install unzip wget binutils gdb python3 > /dev/null
 
 mkdir ghidra
 pushd ghidra

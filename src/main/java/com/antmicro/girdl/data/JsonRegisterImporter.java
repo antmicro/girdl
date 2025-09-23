@@ -19,10 +19,10 @@ import com.antmicro.girdl.model.Peripheral;
 import com.antmicro.girdl.model.Register;
 import com.antmicro.girdl.util.DataSource;
 import com.antmicro.girdl.util.file.Resource;
+import com.antmicro.girdl.util.log.Logger;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import ghidra.util.Msg;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -60,7 +60,7 @@ public final class JsonRegisterImporter extends JsonImporter {
 		// we don't provide an uniqueFallbackName here as
 		// 1. We don't have any available
 		// 2. In JSON import if something is duplicated we should probably just ignore or merge it
-		Msg.trace(this, "Created peripheral " + peripheral.name);
+		Logger.trace(this, "Created peripheral " + peripheral.name);
 		context.addPeripheral(peripheral, Optional.empty());
 	}
 
@@ -69,7 +69,7 @@ public final class JsonRegisterImporter extends JsonImporter {
 		final List<JsonObject> sets = getValidRegisterSets(array);
 
 		if (sets.size() != 1) {
-			Msg.warn(this, "Peripheral " + peripheral.name + " has " + array.size() + " valid register sets");
+			Logger.warn(this, "Peripheral " + peripheral.name + " has " + array.size() + " valid register sets");
 		}
 
 		if (sets.isEmpty()) {
@@ -190,7 +190,7 @@ public final class JsonRegisterImporter extends JsonImporter {
 					}
 				});
 			} catch (Exception e) {
-				Msg.error(this, e);
+				Logger.error(this, e);
 			}
 
 		}

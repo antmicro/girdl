@@ -22,8 +22,7 @@ import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.util.ComparisonResult;
 import com.antmicro.girdl.util.Functional;
-import ghidra.util.Msg;
-import ghidra.util.UniversalIdGenerator;
+import com.antmicro.girdl.util.log.Logger;
 
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -53,7 +52,7 @@ public class Peripheral {
 		for (Register existing : registers) {
 			if (existing.offset == offset && (existing.getSize() * 8) == bits) {
 				if (!name.equals(existing.name)) {
-					Msg.info(this, "Looks like the register '" + name + "' in peripheral " + this.name + " is just an alias for '" + existing.name + "' as both start at 0x" + Long.toHexString(offset));
+					Logger.info(this, "Looks like the register '" + name + "' in peripheral " + this.name + " is just an alias for '" + existing.name + "' as both start at 0x" + Long.toHexString(offset));
 					existing.addAlias(name);
 				}
 
@@ -65,9 +64,6 @@ public class Peripheral {
 	}
 
 	public void compile() {
-
-		// this is needed to avoid exceptions being thrown in tests
-		UniversalIdGenerator.initialize();
 
 		List<Register> sorted = registers.stream().sorted().toList();
 		tryDeducingMissingRegisterSizes(sorted);
@@ -81,7 +77,7 @@ public class Peripheral {
 
 			if (offset > register.offset) {
 				String previousString = (previous == null ? "<error: no previous>" : previous.toQualifiedString());
-				Msg.error(this, "The type for peripheral '" + name + "' can be malformed, as the register " + register.toQualifiedString() + " starts before the end of the previous register " + previousString + "'!");
+				Logger.error(this, "The type for peripheral '" + name + "' can be malformed, as the register " + register.toQualifiedString() + " starts before the end of the previous register " + previousString + "'!");
 				offset = Math.toIntExact(register.offset);
 			}
 
@@ -91,7 +87,7 @@ public class Peripheral {
 				offset += padding;
 			}
 
-			type.addField(register.getType(), register.name, register.getDescription());
+			type.addField(field, register.name, register.getDescription());
 			previous = register;
 
 			offset += field.size();

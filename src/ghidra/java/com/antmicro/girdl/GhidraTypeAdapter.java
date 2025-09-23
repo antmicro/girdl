@@ -25,13 +25,14 @@ import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.util.Msg;
+import ghidra.util.UniversalIdGenerator;
 
 public class GhidraTypeAdapter implements Adapter<DataType> {
 
 	public static final GhidraTypeAdapter INSTANCE = new GhidraTypeAdapter();
 
 	private GhidraTypeAdapter() {
-
+		UniversalIdGenerator.initialize(); // We need to call this before we can use Ghidra types in tests
 	}
 
 	@Override

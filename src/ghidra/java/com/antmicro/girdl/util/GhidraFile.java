@@ -13,25 +13,56 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util.file;
+package com.antmicro.girdl.util;
 
+import com.antmicro.girdl.util.file.Resource;
 import ghidra.formats.gfilesystem.FileSystemProbeConflictResolver;
 import ghidra.formats.gfilesystem.FileSystemRef;
 import ghidra.formats.gfilesystem.FileSystemService;
 import ghidra.formats.gfilesystem.GFile;
+import ghidra.formats.gfilesystem.GFileImpl;
 import ghidra.util.task.TaskMonitor;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-final class GhidraFile extends Resource {
+public final class GhidraFile extends Resource {
 
 	private final GFile file;
 
 	GhidraFile(GFile file) {
 		this.file = file;
+	}
+
+	/**
+	 * Create a resource backed by a Ghidra File,
+	 * silently returns null if given a null value.
+	 */
+	public static Resource fromGhidraFile(GFile file) {
+		return file == null ? null : new GhidraFile(file);
+	}
+
+	/**
+	 * Create a resource backed by a Ghidra File,
+	 * silently returns null if given a null value.
+	 */
+	public static Resource fromJavaFile(File file) {
+		if (file == null) {
+			return null;
+		}
+
+		FileSystemService fss = FileSystemService.getInstance();
+
+		return fromGhidraFile(GFileImpl.fromFSRL(
+				fss.getLocalFS(),
+				fss.getLocalFS().getRootDir(),
+				fss.getLocalFSRL(file),
+				file.isDirectory(),
+				-1
+		));
 	}
 
 	@Override
@@ -109,6 +140,10 @@ final class GhidraFile extends Resource {
 	@Override
 	public Resource back() {
 		return new GhidraFile(file.getParentFile());
+	}
+
+	public static void register() {
+		Resource.setGhidraFileConverter(file -> fromJavaFile(file.toFile()));
 	}
 
 }

@@ -15,8 +15,8 @@
  */
 package com.antmicro.girdl.data;
 
-import com.antmicro.girdl.util.RecursiveTaskMonitor;
 import com.antmicro.girdl.util.file.Resource;
+import com.antmicro.girdl.util.task.RecursiveTaskMonitor;
 import com.google.gson.JsonElement;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;

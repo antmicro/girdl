@@ -15,9 +15,6 @@
  */
 package com.antmicro.girdl.util.file;
 
-import ghidra.formats.gfilesystem.FileSystemService;
-import ghidra.formats.gfilesystem.GFileImpl;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -27,7 +24,7 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Objects;
 
-final class JavaFile extends Resource {
+public final class JavaFile extends Resource {
 
 	private final File file;
 
@@ -51,7 +48,7 @@ final class JavaFile extends Resource {
 
 	@Override
 	public Resource stepInto() {
-		return toGhidraFile().stepInto();
+		return Resource.toGhidraFile(this).stepInto();
 	}
 
 	@Override
@@ -102,16 +99,8 @@ final class JavaFile extends Resource {
 		return new JavaFile(new File(file.getParent()));
 	}
 
-	private Resource toGhidraFile() {
-		FileSystemService fss = FileSystemService.getInstance();
-
-		return Resource.fromGhidraFile(GFileImpl.fromFSRL(
-				fss.getLocalFS(),
-				fss.getLocalFS().getRootDir(),
-				fss.getLocalFSRL(file),
-				isDirectory(),
-				-1
-		));
+	public File toFile() {
+		return file;
 	}
 
 }

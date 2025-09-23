@@ -15,9 +15,9 @@
  */
 package com.antmicro.girdl.data;
 
-import com.antmicro.girdl.util.RecursiveTaskMonitor;
 import com.antmicro.girdl.util.file.Resource;
-import ghidra.util.Msg;
+import com.antmicro.girdl.util.log.Logger;
+import com.antmicro.girdl.util.task.RecursiveTaskMonitor;
 
 public class ArchiveImporter implements Importer {
 
@@ -31,7 +31,7 @@ public class ArchiveImporter implements Importer {
 
 	@Override
 	public void load(Context context, RecursiveTaskMonitor monitor) {
-		Msg.info(this, "Importing data from archive: '" + archive + "'");
+		Logger.info(this, "Importing data from archive: '" + archive + "'");
 		Importer.of(archive.stepInto()).load(context, monitor);
 	}
 

@@ -20,7 +20,7 @@ import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.BitsNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.util.Lazy;
-import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.util.ArrayList;
 import java.util.Comparator;

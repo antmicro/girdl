@@ -16,9 +16,8 @@
 package com.antmicro.girdl.util.file;
 
 import com.antmicro.girdl.util.FileHelper;
+import com.antmicro.girdl.util.log.Logger;
 import com.google.common.base.Stopwatch;
-import ghidra.util.Msg;
-import org.h2.util.IOUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -41,14 +40,14 @@ public class RemoteCache {
 
 		try {
 			try (InputStream input = url.openStream()) {
-				Msg.info(this, "Cache miss for '" + url + "', fetching from remote server...");
+				Logger.info(this, "Cache miss for '" + url + "', fetching from remote server...");
 
 				File file = FileHelper.createTempFile(".tar.gz");
 				file.deleteOnExit();
 
 				try (OutputStream output = new FileOutputStream(file)) {
-					IOUtils.copy(input, output);
-					Msg.info(this, "Completed download of '" + url + "' in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
+					FileHelper.copy(output, input);
+					Logger.info(this, "Completed download of '" + url + "' in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
 					output.flush();
 				}
 
@@ -61,7 +60,7 @@ public class RemoteCache {
 
 	private Resource getRemoteResource(String path) {
 		try {
-			Msg.info(this, "Remote resource '" + path + "' requested");
+			Logger.info(this, "Remote resource '" + path + "' requested");
 			URL url = new URL(path);
 			return Resource.fromJavaFile(cache.computeIfAbsent(url.toURI(), uri -> fetchRemote(url)));
 		} catch (Exception e) {

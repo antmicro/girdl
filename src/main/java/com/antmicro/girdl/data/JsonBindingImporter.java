@@ -18,9 +18,9 @@ package com.antmicro.girdl.data;
 import com.antmicro.girdl.model.Binding;
 import com.antmicro.girdl.model.Peripheral;
 import com.antmicro.girdl.util.file.Resource;
+import com.antmicro.girdl.util.log.Logger;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import ghidra.util.Msg;
 
 public final class JsonBindingImporter extends JsonImporter {
 
@@ -84,7 +84,7 @@ public final class JsonBindingImporter extends JsonImporter {
 			long address = bind.get("Value").getAsLong();
 
 			Binding binding = peripheral.createBinding(alias, address);
-			Msg.trace(this, "Created binding of " + binding);
+			Logger.trace(this, "Created binding of " + binding);
 		}
 	}
 

@@ -15,16 +15,17 @@
  */
 package com.antmicro.girdl.util.file;
 
-import ghidra.formats.gfilesystem.GFile;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Paths;
+import java.util.function.Function;
 
-public sealed abstract class Resource permits GhidraFile, JavaFile {
+public abstract class Resource {
+
+	private static Function<JavaFile, Resource> converter = null;
 
 	/**
 	 * Create a resource backed by a Java File,
@@ -32,14 +33,6 @@ public sealed abstract class Resource permits GhidraFile, JavaFile {
 	 */
 	public static Resource fromJavaFile(File file) {
 		return file == null ? null : new JavaFile(file);
-	}
-
-	/**
-	 * Create a resource backed by a Ghidra File,
-	 * silently returns null if given a null value.
-	 */
-	public static Resource fromGhidraFile(GFile file) {
-		return file == null ? null : new GhidraFile(file);
 	}
 
 	/**
@@ -78,6 +71,18 @@ public sealed abstract class Resource permits GhidraFile, JavaFile {
 		} catch (URISyntaxException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	static Resource toGhidraFile(JavaFile file) {
+		if (converter == null) {
+			throw new RuntimeException("No ghidra file converter available!");
+		}
+
+		return converter.apply(file);
+	}
+
+	public static void setGhidraFileConverter(Function<JavaFile, Resource> converter) {
+		Resource.converter = converter;
 	}
 
 	public abstract Resource[] list();

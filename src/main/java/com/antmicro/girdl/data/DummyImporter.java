@@ -15,9 +15,9 @@
  */
 package com.antmicro.girdl.data;
 
-import com.antmicro.girdl.util.RecursiveTaskMonitor;
 import com.antmicro.girdl.util.file.Resource;
-import ghidra.util.Msg;
+import com.antmicro.girdl.util.log.Logger;
+import com.antmicro.girdl.util.task.RecursiveTaskMonitor;
 
 public final class DummyImporter implements Importer {
 
@@ -34,7 +34,7 @@ public final class DummyImporter implements Importer {
 
 	@Override
 	public void load(Context context, RecursiveTaskMonitor monitor) {
-		if (warn) Msg.warn(this, "Dummy importer invoked for path: " + path + "!");
+		if (warn) Logger.warn(this, "Dummy importer invoked for path: " + path + "!");
 	}
 
 	public static DummyImporter createVerbose(Resource resource) {

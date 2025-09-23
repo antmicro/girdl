@@ -13,25 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl;
+package com.antmicro.girdl.util.args;
 
-import com.antmicro.girdl.data.Importer;
-import docking.options.editor.FileChooserEditor;
-import org.apache.commons.lang3.StringUtils;
-
-public class GirdlFileChooser extends FileChooserEditor {
-
-	GirdlFileChooser() {
-		super(Importer.ALL);
-	}
-
-	@Override
-	public Object getValue() {
-		String text = getAsText();
-		if (StringUtils.isBlank(text)) {
-			return null;
-		}
-		return text;
-	}
-
+public enum ArgType {
+	STRING,
+	FLAG
 }

@@ -15,14 +15,18 @@
  */
 package com.antmicro.girdl.data;
 
-import com.antmicro.girdl.util.RecursiveTaskMonitor;
 import com.antmicro.girdl.util.file.Resource;
+import com.antmicro.girdl.util.task.RecursiveTaskMonitor;
 
 import java.util.stream.Stream;
 
 public final class DirectoryImporter implements Importer {
 
-	public static final FilePredicate PREDICATE = new FilePredicate(Resource::isDirectory, DirectoryImporter::new, "directory");
+	public static final FilePredicate PREDICATE = new FilePredicate(res -> {
+		boolean v = res.isDirectory();
+
+		return v;
+	}, DirectoryImporter::new, "directory");
 
 	final Resource[] files;
 

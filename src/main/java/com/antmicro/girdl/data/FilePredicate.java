@@ -16,8 +16,6 @@
 package com.antmicro.girdl.data;
 
 import com.antmicro.girdl.util.file.Resource;
-import ghidra.util.filechooser.GhidraFileChooserModel;
-import ghidra.util.filechooser.GhidraFileFilter;
 
 import java.io.File;
 import java.util.Arrays;
@@ -73,7 +71,7 @@ public final class FilePredicate implements Predicate<Resource> {
 		return objects.stream().map(Objects::toString).filter(Objects::nonNull).collect(Collectors.joining(", "));
 	}
 
-	public final static class Combined implements GhidraFileFilter {
+	public final static class Combined {
 
 		private final List<FilePredicate> predicates;
 
@@ -85,13 +83,11 @@ public final class FilePredicate implements Predicate<Resource> {
 			return predicates.stream().filter(predicate -> predicate.test(file)).map(FilePredicate::getConstructor).findFirst();
 		}
 
-		@Override
-		public boolean accept(File pathname, GhidraFileChooserModel model) {
+		public boolean accept(File pathname) {
 			final Resource resource = Resource.fromJavaFile(pathname);
 			return predicates.stream().anyMatch(predicate -> predicate.test(resource));
 		}
 
-		@Override
 		public String getDescription() {
 			return combineParts(predicates);
 		}

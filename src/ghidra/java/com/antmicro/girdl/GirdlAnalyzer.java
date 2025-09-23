@@ -19,7 +19,7 @@ import com.antmicro.girdl.data.Context;
 import com.antmicro.girdl.data.Importer;
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
 import com.antmicro.girdl.util.Lazy;
-import com.antmicro.girdl.util.RecursiveTaskMonitor;
+import com.antmicro.girdl.util.task.RecursiveTaskMonitor;
 import com.google.common.base.Stopwatch;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalyzerType;
@@ -150,7 +150,7 @@ public class GirdlAnalyzer extends AbstractAnalyzer {
 	private Context loadContextFromSettings(TaskMonitor monitor) {
 
 		Stopwatch stopwatch = Stopwatch.createStarted();
-		RecursiveTaskMonitor recursive = new RecursiveTaskMonitor(monitor, "Peripheral Definitions - Importing");
+		RecursiveTaskMonitor recursive = new RecursiveTaskMonitor(new GhidraTaskMonitor(monitor), "Peripheral Definitions - Importing");
 		Context context = new Context();
 		context.macros = config.getMacros();
 

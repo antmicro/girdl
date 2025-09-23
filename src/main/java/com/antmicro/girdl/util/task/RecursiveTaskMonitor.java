@@ -13,20 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
-
-import ghidra.util.task.TaskMonitor;
+package com.antmicro.girdl.util.task;
 
 public final class RecursiveTaskMonitor {
 
-	public static final RecursiveTaskMonitor DUMMY = new RecursiveTaskMonitor(TaskMonitor.DUMMY, "");
+	public static final RecursiveTaskMonitor DUMMY = new RecursiveTaskMonitor(new DummyTaskMonitor(), "");
 
 	private long work;
-	private final TaskMonitor monitor;
+	private final SimpleTaskMonitor monitor;
 
-	public RecursiveTaskMonitor(TaskMonitor monitor, String message) {
+	public RecursiveTaskMonitor(SimpleTaskMonitor monitor, String phase) {
 		this.monitor = monitor;
-		monitor.setMessage(message);
+		monitor.setPhase(phase);
 	}
 
 	public void addWork(int amount) {

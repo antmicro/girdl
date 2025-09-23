@@ -56,7 +56,7 @@ import com.antmicro.girdl.data.rdl.parser.ast.expression.StructLiteralNode;
 import com.antmicro.girdl.data.rdl.parser.ast.expression.TernaryOperatorNode;
 import com.antmicro.girdl.data.rdl.parser.ast.expression.UnaryExpression;
 import com.antmicro.girdl.util.UnimplementedException;
-import ghidra.util.Msg;
+import com.antmicro.girdl.util.log.Logger;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -134,7 +134,7 @@ public class Compiler {
 			}
 
 			// TODO multi-literals
-			Msg.trace(this, "The literal node '" + that.literals.getFirst() + "' will be treated as a variable reference!");
+			Logger.trace(this, "The literal node '" + that.literals.getFirst() + "' will be treated as a variable reference!");
 			return scope.get(that.location, that.literals.getFirst());
 		}
 
@@ -301,7 +301,7 @@ public class Compiler {
 						// this isn't very critical and not that often used, skipping it in I3C RDL does no harm
 						// ParseError.create(assignment.location).setUnexpected("multi-component property").setUnimplemented().raise();
 
-						Msg.warn(this, "Unimplemented multi-component property at " + assignment.location.where());
+						Logger.warn(this, "Unimplemented multi-component property at " + assignment.location.where());
 						continue;
 					}
 

@@ -15,9 +15,9 @@
  */
 package com.antmicro.girdl.data;
 
-import com.antmicro.girdl.util.RecursiveTaskMonitor;
 import com.antmicro.girdl.util.file.Resource;
-import ghidra.util.Msg;
+import com.antmicro.girdl.util.log.Logger;
+import com.antmicro.girdl.util.task.RecursiveTaskMonitor;
 
 public interface Importer {
 
@@ -45,7 +45,7 @@ public interface Importer {
 		try {
 			return ALL.getMatching(file).orElseThrow().get(file);
 		} catch (Exception e) {
-			Msg.error(file, e);
+			Logger.error(file, e);
 
 			return DummyImporter.createVerbose(file);
 		}

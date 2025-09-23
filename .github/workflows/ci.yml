@@ -20,8 +20,11 @@ jobs:
       - name: Checkstyle
         run: ./script/ci/gradle.sh checkstyleMain
 
-      - name: Test
+      - name: Unit Tests
         run: ./script/ci/gradle.sh test --rerun --stacktrace
+
+      - name: Standalone Tests
+        run: ./script/ci/standalone.sh
 
       - name: Documentation
         run: ./script/ci/docs.sh

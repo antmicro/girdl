@@ -7,7 +7,7 @@ if [[ $(id -u) -ne 0 ]]; then
     SUDO='sudo'
 fi
 
-$SUDO apt -qqy install python3-venv python3-pip python3 > /dev/null
+$SUDO apt -qqy install python3-venv python3-pip > /dev/null
 python3 -m venv .venv/
 source .venv/bin/activate
 

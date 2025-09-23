@@ -26,10 +26,10 @@ import com.antmicro.girdl.data.xml.XmlParser;
 import com.antmicro.girdl.model.Field;
 import com.antmicro.girdl.model.Peripheral;
 import com.antmicro.girdl.model.Register;
-import com.antmicro.girdl.util.RecursiveTaskMonitor;
 import com.antmicro.girdl.util.Reflect;
 import com.antmicro.girdl.util.file.Resource;
-import ghidra.util.Msg;
+import com.antmicro.girdl.util.log.Logger;
+import com.antmicro.girdl.util.task.RecursiveTaskMonitor;
 import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -68,7 +68,7 @@ public final class SvdImporter implements Importer {
 		final long defaultSize = device.size.orElse(0L);
 
 		if (unitBits % 8 != 0) {
-			Msg.error(this, "This device uses a non byte aligned addressing, Ghidra will not be able to correctly display it!");
+			Logger.error(this, "This device uses a non byte aligned addressing, Ghidra will not be able to correctly display it!");
 		}
 
 		final List<SvdPeripheral> peripherals = device.peripherals.peripheral;
@@ -80,7 +80,7 @@ public final class SvdImporter implements Importer {
 			parsePeripheral(peripheral, context, device, defaultSize);
 		});
 
-		Msg.info(this, "Loaded SVD for device '" + deviceName + "'");
+		Logger.trace(this, "Loaded SVD for device '" + deviceName + "'");
 	}
 
 	private void parsePeripheral(SvdPeripheral node, Context context, SvdDevice device, long defaultSize) {
@@ -155,7 +155,7 @@ public final class SvdImporter implements Importer {
 
 	private void parseCluster(Peripheral peripheral, SvdCluster cluster, SvdDevice root, PeripheralConfig config) {
 		cluster.derivedFrom.ifPresent(path -> {
-			Msg.error(this, "Register cluster inheritance is not implemented by this plugin!");
+			Logger.error(this, "Register cluster inheritance is not implemented!");
 		});
 
 		parseRegisterBlockEntry(peripheral, cluster, root, config);

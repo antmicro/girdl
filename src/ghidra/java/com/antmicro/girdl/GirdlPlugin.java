@@ -15,6 +15,8 @@
  */
 package com.antmicro.girdl;
 
+import com.antmicro.girdl.util.GhidraFile;
+import com.antmicro.girdl.util.log.Logger;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
 import ghidra.framework.plugintool.PluginInfo;
@@ -35,6 +37,13 @@ public class GirdlPlugin extends ProgramPlugin {
 
 	public GirdlPlugin(PluginTool tool) {
 		super(tool);
+	}
+
+	static {
+		Logger.setSink(new GhidraLogConsumer());
+		GhidraFile.register();
+
+		Logger.info(GirdlPlugin.class, "Plugin systems ready!");
 	}
 
 }
