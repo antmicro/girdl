@@ -30,8 +30,4 @@ fi
 
 $SUDO apt -qqy install unzip wget binutils gdb python3 > /dev/null
 
-mkdir ghidra
-pushd ghidra
-  wget -q https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.4_build/ghidra_11.4_PUBLIC_20250620.zip
-  unzip -q ghidra_11.4_PUBLIC_20250620.zip
-popd
+./script/install.sh

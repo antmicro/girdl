@@ -14,39 +14,28 @@ sourceSets {
 	}
 }
 
-if (System.env.GHIDRA_INSTALL_DIR) {
-	project.ext.ghidraPath = System.env.GHIDRA_INSTALL_DIR
-} else if (project.hasProperty("GHIDRA_INSTALL_DIR")) {
-	project.ext.ghidraPath = project.getProperty("GHIDRA_INSTALL_DIR")
-} else {
-	throw new GradleException("Ghidra path not set! Set the 'GHIDRA_INSTALL_DIR' environment variable!")
-}
+// Getting an error here? Run the './script/install.sh' script to fix it,
+// it will install the target version of Ghidra into a local directory
+assert file("./ghidra/install").exists()
+project.ext.ghidraPath = project.rootDir.getPath() + "/ghidra/install"
+print("Using Ghidra from: " + project.ext.ghidraPath)
 
 checkstyle {
 	toolVersion = "11.0.0"
 	ignoreFailures = false
 	maxWarnings = 0
+	sourceSets = [sourceSets.main]
 }
 
-task distributeExtension {
+task distribute {
 	group = "Ghidra"
 
 	apply from: "extension.gradle"
 	dependsOn ':buildExtension'
 }
 
-task applyExtension {
-	group = "Ghidra"
-	dependsOn ':distributeExtension'
-
-	var target = new File(project.ext.ghidraPath).getCanonicalPath() + "/Extensions/Ghidra"
-
-	copy {
-		from "dist/girdl.zip"
-		into target
-		duplicatesStrategy = DuplicatesStrategy.INCLUDE
-	}
-}
+// build runs test and checkstyle, distribute just creates the final JAR
+build.finalizedBy(distribute)
 
 repositories {
 	mavenCentral()

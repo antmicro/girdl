@@ -194,10 +194,6 @@ task buildExtension (type: Zip) {
 			into filePath
 		}
 	}
-
-	doLast {
-		println "\nCreated ${archiveBaseName.get()}.${archiveExtension.get()} in ${destinationDirectory.get()}"
-	}
 }
 
 /*********************************************************************************

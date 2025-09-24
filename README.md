@@ -11,17 +11,21 @@ Copyright (c) 2025 [Antmicro](https://www.antmicro.com)
 To build the extension, use the provided Gradle wrapper script:
 
 ```bash
-# Specify path to your Ghidra installation directory
-# If you build Ghidra from source this will be under <ghidra>/build/dist/ghidra_<version>
-export GHIDRA_INSTALL_DIR="..."
+# Before you can build the plugin you will need to run the install.sh script
+# to download a local copy of ghidra that the plugin is based on
+./script/install.sh
 
-# Extension file will be created in ./dist
-# To use it place it in GHIDRA_INSTALL_DIR/Extensions/Ghidra or ...
-./gradlew distributeExtension
+# Extension zip will be created in ./dist
+# To use it add it to the list found in File > Install Extensions, and restart ghidra
+./gradlew build
+```
 
-# Run this target to copy the extension to the given Ghidra installation
-# After this, in Ghidra, go to File > Install Extensions and select 'renode' from the list
-./gradlew applyExtension
+If you just intend to run/debug the plugin and don't care about adding it to your own Ghidra install:
+
+```bash
+# This will start ghidra with the extension pre-installed,
+# this is the recommended way of starting the plugin during development
+./script/ghidra.sh -r
 ```
 
 ## Usage
@@ -38,8 +42,11 @@ This plugin uses submodules for some of the test data, but if you don't want to 
 # If you want to clone the submodules with additional test data use:
 git submodule update --init --recursive
 
-# Run tests
-./gradlew test --rerun
+# Run checkstyle and unit tests
+./gradlew check
+
+# Additionally, run tests of the standalone mode
+./script/ci/standalone.sh
 ```
 
 ## Development

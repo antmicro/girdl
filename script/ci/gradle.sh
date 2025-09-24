@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
 
-source env.sh
+export JAVA_HOME=$JAVA_HOME_21_X64
+export PATH=$JAVA_HOME:$PATH
+
 ./gradlew $@

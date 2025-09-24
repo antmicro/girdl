@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source "$SCRIPT_DIR/env.sh"
 export DATA="$(pwd)/src/test/resources"
 
 # Check if string [stdin] contains another string [$1] as substring.

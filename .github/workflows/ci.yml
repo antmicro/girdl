@@ -15,7 +15,7 @@ jobs:
         run: ./script/ci/debian.sh
 
       - name: Build
-        run: ./script/ci/gradle.sh applyExtension
+        run: ./script/ci/gradle.sh distribute
 
       - name: Checkstyle
         run: ./script/ci/gradle.sh checkstyleMain

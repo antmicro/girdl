@@ -2,8 +2,10 @@
 
 mode='build'
 
-if [[ -z "${GHIDRA_INSTALL_DIR}" ]]; then
-  echo "Ghidra install dir not set!"
+if [[ ! -d "$(pwd)/ghidra/install" ]]; then
+  echo "Ghidra installation not found!"
+  echo " * Make sure you are running this script from the project root"
+  echo " * Invoke './script/install.sh' first to install local ghidra build"
   exit 1
 fi
 
@@ -16,8 +18,12 @@ while getopts 'rd' flag; do
   esac
 done
 
-GHIDRA_CONFIG="$HOME/.config/ghidra"
-GHIDRA_EXTENSIONS="$GHIDRA_INSTALL_DIR/Extensions/Ghidra"
+SCRIPT_PATH="$(dirname -- "${BASH_SOURCE[0]}")"
+ROOT_PATH="$(cd -- "$SCRIPT_PATH/.." && pwd)"
+
+INSTALL_DIR="$ROOT_PATH/ghidra/install"
+GHIDRA_CONFIG="$HOME/.config/ghidra/$(cat "$ROOT_PATH/ghidra/config.txt")"
+GHIDRA_EXTENSIONS="$INSTALL_DIR/Extensions/Ghidra"
 
 if [[ ! -d "$GHIDRA_CONFIG" ]]; then
   echo "Ghidra config directory not found, unable to automatically install extension!"
@@ -25,47 +31,42 @@ if [[ ! -d "$GHIDRA_CONFIG" ]]; then
   exit 1
 fi
 
-SCRIPT_PATH="$(dirname -- "${BASH_SOURCE[0]}")"
-ROOT_PATH="$(cd -- "$SCRIPT_PATH/.." && pwd)"
-
 echo
 echo "Assuming Ghidra config path to be:     $GHIDRA_CONFIG"
 echo "Assuming Ghidra extension path to be:  $GHIDRA_EXTENSIONS"
 echo "Assuming plugin repository path to be: $ROOT_PATH"
 echo
 
-./gradlew distributeExtension
+./gradlew distribute
 
 if [[ ! $? -eq 0 ]]; then
+  echo "Failed to build the extension!"
   exit 1
 fi
 
 rm "$GHIDRA_EXTENSIONS/girdl.zip"
+cp "$ROOT_PATH/dist/girdl.zip" "$GHIDRA_EXTENSIONS"
 
-echo
-echo "Updating plugin installations..."
-for path in $(find $GHIDRA_CONFIG -maxdepth 1 -type d -name "ghidra_*" -exec echo "{}/Extensions" \;); do
+if pushd "$GHIDRA_CONFIG" >/dev/null 2>&1; then
 
-  pushd "$path" >/dev/null 2>&1 || {
-    echo " * Unable to update plugin installed at: $path";
-    continue
-  }
-
-  echo " * Updating plugin installed at '$path'"
+  mkdir -p "Extensions"
+  cd Extensions
 
   if [[ -d "girdl" ]]; then
     rm -rf "girdl"
   fi
 
   unzip "$ROOT_PATH/dist/girdl.zip" 1>/dev/null
-  popd >/dev/null 2>&1 || exit 1
-done
+  popd
+else
+  echo
+  echo "Unable to update plugin installed in $GHIDRA_CONFIG! Has Ghidra not been run yet?"
+fi
 
 if [[ "$mode" != "build" ]]; then
   echo
   echo "Starting Ghidra with extension enabled in $mode mode..."
-  echo "Installation directory: '$GHIDRA_INSTALL_DIR'"
   echo
 
-  "$GHIDRA_INSTALL_DIR/support/launch.sh" $mode jdk Ghidra 4G "" ghidra.GhidraRun
+  "$INSTALL_DIR/support/launch.sh" $mode jdk Ghidra 4G "" ghidra.GhidraRun
 fi
