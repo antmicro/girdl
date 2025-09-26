@@ -50,7 +50,7 @@ public class BaseNode extends TypeNode {
 	}
 
 	@Override
-	public int size() {
+	public int size(int width) {
 		return bytes;
 	}
 

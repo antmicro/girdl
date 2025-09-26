@@ -68,8 +68,8 @@ public class BitsNode extends TypeNode {
 	}
 
 	@Override
-	public int size() {
-		return underlying.size();
+	public int size(int width) {
+		return underlying.size(width);
 	}
 
 	@Override

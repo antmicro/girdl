@@ -90,7 +90,9 @@ public class Peripheral {
 			type.addField(field, register.name, register.getDescription());
 			previous = register;
 
-			offset += field.size();
+			// we pass 0 as the device address width as peripherals don't use
+			// pointers and this value will not be used anyway
+			offset += field.size(0);
 		}
 	}
 

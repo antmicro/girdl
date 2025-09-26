@@ -44,8 +44,8 @@ public class ArrayNode extends TypeNode {
 	}
 
 	@Override
-	public int size() {
-		return element.size() * length;
+	public int size(int width) {
+		return element.size(width) * length;
 	}
 
 	@Override

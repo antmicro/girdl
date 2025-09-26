@@ -26,6 +26,6 @@ public abstract class TypeNode {
 	}
 
 	public abstract <T> T adapt(Adapter<T> adapter);
-	public abstract int size();
+	public abstract int size(int width);
 
 }

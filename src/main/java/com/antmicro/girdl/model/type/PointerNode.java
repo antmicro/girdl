@@ -15,42 +15,43 @@
  */
 package com.antmicro.girdl.model.type;
 
-public final class PassTypeAdapter implements Adapter<TypeNode> {
+public class PointerNode extends TypeNode {
 
-	public static final PassTypeAdapter INSTANCE = new PassTypeAdapter();
+	public final TypeNode reference;
 
-	private PassTypeAdapter() {
+	private PointerNode(TypeNode reference) {
+		this.reference = reference;
+	}
 
+	public static PointerNode of(TypeNode reference) {
+		return new PointerNode(reference);
 	}
 
 	@Override
-	public TypeNode adaptArray(ArrayNode type) {
-		return type;
+	public <T> T adapt(Adapter<T> adapter) {
+		return adapter.adaptPointer(this);
 	}
 
 	@Override
-	public TypeNode adaptBase(BaseNode type) {
-		return type;
+	public int size(int width) {
+		return width;
 	}
 
 	@Override
-	public TypeNode adaptBits(BitsNode type) {
-		return type;
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (object instanceof PointerNode other) {
+			return other.reference.equals(reference);
+		}
+
+		return false;
 	}
 
 	@Override
-	public TypeNode adaptStruct(StructNode type) {
-		return type;
+	public int hashCode() {
+		return 11 * reference.hashCode() + 97;
 	}
-
-	@Override
-	public TypeNode adaptTypedef(TypedefNode type) {
-		return type;
-	}
-
-	@Override
-	public TypeNode adaptPointer(PointerNode type) {
-		return type;
-	}
-
 }

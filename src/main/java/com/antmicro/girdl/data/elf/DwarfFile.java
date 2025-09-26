@@ -31,6 +31,7 @@ import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.BitsNode;
 import com.antmicro.girdl.model.type.PassTypeAdapter;
+import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.model.type.TypedefNode;
@@ -64,6 +65,7 @@ public class DwarfFile extends ElfFile {
 	private final Template subrange;
 	private final Template variable;
 	private final Template typedef;
+	private final Template pointer;
 
 	// type used for bitfield fields
 	private final Lazy<DataWriter> integral = new Lazy<>();
@@ -139,6 +141,9 @@ public class DwarfFile extends ElfFile {
 				.add(DwarfAttr.NAME, DwarfForm.STRING)
 				.add(DwarfAttr.TYPE, DwarfForm.REF4);
 
+		pointer = createTemplate(DwarfTag.POINTER_TYPE, false)
+				.add(DwarfAttr.TYPE, DwarfForm.REF4);
+
 		unit.create(dies)
 				.putString("girdl")
 				.putByte(1)
@@ -161,7 +166,7 @@ public class DwarfFile extends ElfFile {
 		SegmentedBuffer buffer = variable.create(dies);
 		buffer.putString(name).putInt(() -> type.offset() - info.offset());
 
-		createSymbol(name, address, node.size(), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
+		createSymbol(name, address, node.size(bits / 8), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
 
 		SegmentedBuffer head = buffer.putSegment();
 		SegmentedBuffer body = buffer.putSegment();
@@ -192,7 +197,7 @@ public class DwarfFile extends ElfFile {
 
 			SegmentedBuffer buffer = array.create(dies);
 			buffer.putInt(() -> element.offset() - info.offset());
-			buffer.putShort(node.size());
+			buffer.putShort(node.size(bits / 8));
 
 			subrange.create(buffer).putShort(node.length);
 
@@ -251,7 +256,7 @@ public class DwarfFile extends ElfFile {
 
 			SegmentedBuffer buffer = structure.create(dies);
 			buffer.putString(node.name);
-			buffer.putShort(node.size());
+			buffer.putShort(node.size(bits / 8));
 
 			int offset = 0;
 
@@ -267,7 +272,7 @@ public class DwarfFile extends ElfFile {
 						.putShort(offset)
 						.putInt(() -> typeBuffer.offset() - info.offset());
 
-				offset += entry.type.size();
+				offset += entry.type.size(bits / 8);
 			}
 
 			buffer.putByte(0);
@@ -282,6 +287,17 @@ public class DwarfFile extends ElfFile {
 
 			SegmentedBuffer buffer = typedef.create(dies);
 			buffer.putString(node.name);
+			buffer.putInt(() -> underlying.offset() - info.offset());
+
+			types.put(type, buffer);
+			return buffer;
+		}
+
+		if (type instanceof PointerNode node) {
+
+			DataWriter underlying = createType(node.reference);
+
+			SegmentedBuffer buffer = pointer.create(dies);
 			buffer.putInt(() -> underlying.offset() - info.offset());
 
 			types.put(type, buffer);

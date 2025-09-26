@@ -22,5 +22,6 @@ public interface Adapter<T> {
 	T adaptBits(BitsNode type);
 	T adaptStruct(StructNode type);
 	T adaptTypedef(TypedefNode type);
+	T adaptPointer(PointerNode type);
 
 }

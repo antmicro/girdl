@@ -51,8 +51,8 @@ public class StructNode extends TypeNode {
 	}
 
 	@Override
-	public int size() {
-		return fields.stream().mapToInt(entry -> entry.type.size()).sum();
+	public int size(int width) {
+		return fields.stream().mapToInt(entry -> entry.type.size(width)).sum();
 	}
 
 	@Override

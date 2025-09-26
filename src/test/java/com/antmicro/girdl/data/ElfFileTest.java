@@ -9,7 +9,9 @@ import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.BitsNode;
+import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
+import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.model.type.TypedefNode;
 import com.antmicro.girdl.test.Util;
 import com.antmicro.girdl.util.log.Logger;
@@ -76,7 +78,7 @@ public class ElfFileTest {
 				.addField(BaseNode.of(8), "first", "first value")
 				.addField(BaseNode.of(8), "second", "first value");
 
-		Assertions.assertEquals(16, outer.size());
+		Assertions.assertEquals(16, outer.size(4));
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
 			dwarf.createVariable(outer, "name", 0x1234567890L);
@@ -121,7 +123,7 @@ public class ElfFileTest {
 						4), "first", "first value")
 				.addField(BaseNode.of(8), "last", "first value");
 
-		Assertions.assertEquals(16, outer.size());
+		Assertions.assertEquals(16, outer.size(4));
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
 			dwarf.createVariable(outer, "name", 0x1234567890L);
@@ -155,7 +157,7 @@ public class ElfFileTest {
 				.addField(2, "bf_3", "")
 				.addField(24, "bf_4", "");
 
-		Assertions.assertEquals(4, outer.size());
+		Assertions.assertEquals(4, outer.size(4));
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.I386, 32)) {
 			dwarf.createVariable(outer, "name", 0x1234567890L);
@@ -190,7 +192,7 @@ public class ElfFileTest {
 
 		TypedefNode typedef = TypedefNode.of(BaseNode.of(4, "named_4_bytes"), "another");
 
-		Assertions.assertEquals(4, typedef.size());
+		Assertions.assertEquals(4, typedef.size(4));
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.I386, 32)) {
 			dwarf.createType(typedef);
@@ -215,6 +217,36 @@ public class ElfFileTest {
 				File peripherals:
 				\ttypedef named_4_bytes another;
 				\tnamed_4_bytes"""));
+
+	}
+
+	@Test
+	void testDwarfFileWithPointer() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		TypeNode type = TypedefNode.of(PointerNode.of(BaseNode.of(4, "named_4_bytes")), "ptr");
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.I386, 32)) {
+			dwarf.createType(type);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("DW_TAG_base_type"));
+		Assertions.assertTrue(debug.contains("DW_TAG_pointer_type"));
+
+		String debugger = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\ninfo types").output();
+
+		Assertions.assertTrue(debugger.contains("""
+				(gdb) All defined types:
+				
+				File peripherals:
+				\tnamed_4_bytes
+				\ttypedef named_4_bytes * ptr;"""));
 
 	}
 

@@ -26,7 +26,7 @@ public class DwarfTag {
 	public static final int LABEL = 0x0a;
 	public static final int LEXICAL_BLOCK = 0x0b;
 	public static final int MEMBER = 0x0d;
-	public static final int POER_TYPE = 0x0f;
+	public static final int POINTER_TYPE = 0x0f;
 	public static final int REFERENCE_TYPE = 0x10;
 	public static final int COMPILE_UNIT = 0x11;
 	public static final int STRING_TYPE = 0x12;

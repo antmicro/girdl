@@ -19,11 +19,13 @@ import com.antmicro.girdl.model.type.Adapter;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.BitsNode;
+import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypedefNode;
 import ghidra.app.util.bin.StructConverter;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.TypedefDataType;
 import ghidra.util.Msg;
@@ -93,6 +95,11 @@ public class GhidraTypeAdapter implements Adapter<DataType> {
 	@Override
 	public DataType adaptTypedef(TypedefNode type) {
 		return new TypedefDataType(type.name, type.adapt(this));
+	}
+
+	@Override
+	public DataType adaptPointer(PointerNode type) {
+		return new PointerDataType(type.reference.adapt(this));
 	}
 
 }
