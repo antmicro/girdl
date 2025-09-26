@@ -19,12 +19,14 @@ import com.antmicro.girdl.model.type.Adapter;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.BitsNode;
+import com.antmicro.girdl.model.type.IntegerEnumNode;
 import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypedefNode;
 import ghidra.app.util.bin.StructConverter;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.EnumDataType;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.TypedefDataType;
@@ -100,6 +102,17 @@ public class GhidraTypeAdapter implements Adapter<DataType> {
 	@Override
 	public DataType adaptPointer(PointerNode type) {
 		return new PointerDataType(type.reference.adapt(this));
+	}
+
+	@Override
+	public DataType adaptEnum(IntegerEnumNode type) {
+		EnumDataType enumeration = new EnumDataType(type.name, type.underlying.adapt(this).getLength());
+
+		for (IntegerEnumNode.Enumerator enumerator : type.enumerators) {
+			enumeration.add(enumerator.name, enumerator.value);
+		}
+
+		return enumeration;
 	}
 
 }

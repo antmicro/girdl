@@ -9,6 +9,7 @@ import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.BitsNode;
+import com.antmicro.girdl.model.type.IntegerEnumNode;
 import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
@@ -32,7 +33,7 @@ public class ElfFileTest {
 			elf.createSymbol("SYMBOL_NAME", 0x1122334455667788L, 4, ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
 		}
 
-		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
 		Assertions.assertFalse(all.contains("Error"));
 		Assertions.assertFalse(all.contains("Warning"));
 
@@ -84,7 +85,7 @@ public class ElfFileTest {
 			dwarf.createVariable(outer, "name", 0x1234567890L);
 		}
 
-		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
 		Assertions.assertFalse(all.contains("Error"));
 		Assertions.assertFalse(all.contains("Warning"));
 
@@ -129,7 +130,7 @@ public class ElfFileTest {
 			dwarf.createVariable(outer, "name", 0x1234567890L);
 		}
 
-		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
 		Assertions.assertFalse(all.contains("Error"));
 		Assertions.assertFalse(all.contains("Warning"));
 
@@ -163,7 +164,7 @@ public class ElfFileTest {
 			dwarf.createVariable(outer, "name", 0x1234567890L);
 		}
 
-		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
 		Assertions.assertFalse(all.contains("Error"));
 		Assertions.assertFalse(all.contains("Warning"));
 
@@ -198,7 +199,7 @@ public class ElfFileTest {
 			dwarf.createType(typedef);
 		}
 
-		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
 		Assertions.assertFalse(all.contains("Error"));
 		Assertions.assertFalse(all.contains("Warning"));
 
@@ -231,7 +232,7 @@ public class ElfFileTest {
 			dwarf.createType(type);
 		}
 
-		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
 		Assertions.assertFalse(all.contains("Error"));
 		Assertions.assertFalse(all.contains("Warning"));
 
@@ -247,6 +248,43 @@ public class ElfFileTest {
 				File peripherals:
 				\tnamed_4_bytes
 				\ttypedef named_4_bytes * ptr;"""));
+
+	}
+
+	@Test
+	void testDwarfFileWithEnum() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		IntegerEnumNode type = IntegerEnumNode.of("my_enum", BaseNode.of(4));
+		type.addEnumerator("A", 123);
+		type.addEnumerator("B", 0xffff);
+		type.addEnumerator("C", 0xCCCCCCCCL);
+
+		Assertions.assertEquals(4, type.size(4));
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.I386, 32)) {
+			dwarf.createType(type);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("DW_TAG_enumeration_type"));
+		Assertions.assertTrue(debug.contains("DW_TAG_enumerator"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : my_enum"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : A"));
+		Assertions.assertTrue(debug.contains("DW_AT_const_value : 0x7b"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : B"));
+		Assertions.assertTrue(debug.contains("DW_AT_const_value : 0xffff"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : C"));
+		Assertions.assertTrue(debug.contains("DW_AT_const_value : 0xcccccccc"));
+
+		String debugger = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\nptype enum my_enum").output();
+
+		Assertions.assertTrue(debugger.contains("(gdb) type = enum my_enum {A = 123, B = 65535, C = 3435973836}"));
 
 	}
 

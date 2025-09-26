@@ -53,4 +53,9 @@ public final class PassTypeAdapter implements Adapter<TypeNode> {
 		return type;
 	}
 
+	@Override
+	public TypeNode adaptEnum(IntegerEnumNode type) {
+		return type;
+	}
+
 }

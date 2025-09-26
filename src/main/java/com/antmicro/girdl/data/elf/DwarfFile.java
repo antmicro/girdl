@@ -30,6 +30,7 @@ import com.antmicro.girdl.model.Peripheral;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.BitsNode;
+import com.antmicro.girdl.model.type.IntegerEnumNode;
 import com.antmicro.girdl.model.type.PassTypeAdapter;
 import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
@@ -66,6 +67,8 @@ public class DwarfFile extends ElfFile {
 	private final Template variable;
 	private final Template typedef;
 	private final Template pointer;
+	private final Template enumeration;
+	private final Template enumerator;
 
 	// type used for bitfield fields
 	private final Lazy<DataWriter> integral = new Lazy<>();
@@ -143,6 +146,14 @@ public class DwarfFile extends ElfFile {
 
 		pointer = createTemplate(DwarfTag.POINTER_TYPE, false)
 				.add(DwarfAttr.TYPE, DwarfForm.REF4);
+
+		enumeration = createTemplate(DwarfTag.ENUMERATION_TYPE, true)
+				.add(DwarfAttr.NAME, DwarfForm.STRING)
+				.add(DwarfAttr.TYPE, DwarfForm.REF4);
+
+		enumerator = createTemplate(DwarfTag.ENUMERATOR, false)
+				.add(DwarfAttr.NAME, DwarfForm.STRING)
+				.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8);
 
 		unit.create(dies)
 				.putString("girdl")
@@ -299,6 +310,27 @@ public class DwarfFile extends ElfFile {
 
 			SegmentedBuffer buffer = pointer.create(dies);
 			buffer.putInt(() -> underlying.offset() - info.offset());
+
+			types.put(type, buffer);
+			return buffer;
+		}
+
+		if (type instanceof IntegerEnumNode node) {
+			DataWriter underlying = createType(node.underlying);
+
+			SegmentedBuffer buffer = enumeration.create(dies);
+			buffer.putString(node.name);
+			buffer.putInt(() -> underlying.offset() - info.offset());
+
+			for (IntegerEnumNode.Enumerator entry : node.enumerators) {
+
+				enumerator.create(buffer)
+						.putString(entry.name)
+						.putLong(entry.value);
+
+			}
+
+			buffer.putByte(0);
 
 			types.put(type, buffer);
 			return buffer;

@@ -23,5 +23,6 @@ public interface Adapter<T> {
 	T adaptStruct(StructNode type);
 	T adaptTypedef(TypedefNode type);
 	T adaptPointer(PointerNode type);
+	T adaptEnum(IntegerEnumNode type);
 
 }

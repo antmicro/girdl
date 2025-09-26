@@ -104,6 +104,17 @@ public final class Util {
 			}
 		}
 
+		public String error() {
+			try {
+
+				BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+				Assertions.assertEquals(0, process.waitFor());
+				return reader.lines().collect(Collectors.joining("\n"));
+			} catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
 	}
 
 
