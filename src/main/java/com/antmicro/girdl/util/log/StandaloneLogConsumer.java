@@ -22,6 +22,7 @@ public class StandaloneLogConsumer implements LogConsumer {
 	private final PrintStream stream;
 
 	public boolean trace = true;
+	public boolean debug = true;
 	public boolean info = true;
 	public boolean warn = true;
 	public boolean error = true;
@@ -41,6 +42,11 @@ public class StandaloneLogConsumer implements LogConsumer {
 	@Override
 	public void trace(Object origin, Object message) {
 		if (trace) stream.println("TRACE [" + getOriginName(origin) + "]: " + message.toString());
+	}
+
+	@Override
+	public void debug(Object origin, Object message) {
+		if (debug) stream.println("DEBUG [" + getOriginName(origin) + "]: " + message.toString());
 	}
 
 	@Override

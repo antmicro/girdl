@@ -35,8 +35,13 @@ public final class Mutable<T> {
 	/**
 	 * Replace the value held by this mutable using the given lambda.
 	 */
-	public void map(Function<T, T> mapper) {
+	public Mutable<T> map(Function<T, T> mapper) {
 		value = mapper.apply(value);
+		return this;
+	}
+
+	public <R> R to(Function<T, R> mapper) {
+		return mapper.apply(value);
 	}
 
 }

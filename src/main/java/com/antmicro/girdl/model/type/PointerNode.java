@@ -17,7 +17,7 @@ package com.antmicro.girdl.model.type;
 
 public class PointerNode extends TypeNode {
 
-	public final TypeNode reference;
+	public TypeNode reference;
 
 	private PointerNode(TypeNode reference) {
 		this.reference = reference;

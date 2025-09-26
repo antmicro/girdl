@@ -18,6 +18,7 @@ package com.antmicro.girdl.util.log;
 public interface LogConsumer {
 
 	void trace(Object origin, Object message);
+	void debug(Object origin, Object message);
 	void info(Object origin, Object message);
 	void warn(Object origin, Object message);
 	void error(Object origin, Object message);

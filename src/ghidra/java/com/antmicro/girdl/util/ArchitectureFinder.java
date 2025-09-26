@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl;
+package com.antmicro.girdl.util;
 
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
-import com.antmicro.girdl.util.Lazy;
-import com.antmicro.girdl.util.Reflect;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
 
@@ -59,7 +57,7 @@ public class ArchitectureFinder {
 		final Map<String, Integer> map = getMachineMap();
 
 		// first look for "arch:bits", if that fails try just "arch" and if that fails too return the fallback machine
-		int type = map.getOrDefault(machine + ":" + program.getDefaultPointerSize(), map.getOrDefault(machine, fallback));
+		int type = map.getOrDefault(machine + ":" + program.getDefaultPointerSize() * 8, map.getOrDefault(machine, fallback));
 
 		Msg.info(ArchitectureFinder.class, "Guessed processor '" + program.getLanguage().getLanguageID() + "' to be ELF machine " + Reflect.constValueName(ElfMachine.class, type));
 		return type;

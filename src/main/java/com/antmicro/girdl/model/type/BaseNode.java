@@ -18,6 +18,8 @@ package com.antmicro.girdl.model.type;
 public class BaseNode extends TypeNode {
 
 	public static final BaseNode BYTE = of(1);
+	public static final BaseNode VOID = of(0, "void");
+	public static final TypeNode BITS = of(8, "bits");
 
 	public final int bytes;
 	public final String name;
@@ -33,6 +35,10 @@ public class BaseNode extends TypeNode {
 
 	public static BaseNode of(int bytes, String name) {
 		return new BaseNode(bytes, name);
+	}
+
+	public boolean isVoid() {
+		return bytes == 0;
 	}
 
 	@Override

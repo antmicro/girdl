@@ -22,7 +22,7 @@ import java.util.Objects;
 public class FunctionNode extends TypeNode {
 
 	/// Return value, null if the function doesn't return.
-	public final TypeNode result;
+	public TypeNode result;
 	public final String name;
 	public final List<Parameter> parameters = new ArrayList<>();
 
@@ -59,7 +59,7 @@ public class FunctionNode extends TypeNode {
 
 	@Override
 	public int hashCode() {
-		return (result == null ? 0 : result.hashCode()) * 11 + parameters.hashCode() + name.hashCode() * 3;
+		return (result == null ? 0 : result.hashCode()) * 11 + parameters.hashCode() + name.hashCode() * 3 + Long.hashCode(low) * 7 + Long.hashCode(high) * 37;
 	}
 
 	@Override
@@ -67,7 +67,7 @@ public class FunctionNode extends TypeNode {
 		if (object == this) return true;
 
 		if (object instanceof FunctionNode other) {
-			return Objects.equals(other.result, result) && other.name.equals(name) && other.parameters.equals(parameters);
+			return Objects.equals(other.result, result) && other.name.equals(name) && other.parameters.equals(parameters) && other.low == low && other.high == high;
 		}
 
 		return false;

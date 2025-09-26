@@ -18,6 +18,7 @@ package com.antmicro.girdl.model.type;
 import java.util.ArrayList;
 import java.util.List;
 
+@Deprecated
 public class BitsNode extends TypeNode {
 
 	public final BaseNode underlying;

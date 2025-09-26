@@ -15,13 +15,11 @@
  */
 package com.antmicro.girdl.data;
 
-import com.antmicro.girdl.data.elf.DwarfFile;
 import com.antmicro.girdl.data.rdl.Macro;
 import com.antmicro.girdl.model.Peripheral;
 import com.antmicro.girdl.util.ComparisonResult;
 import com.antmicro.girdl.util.log.Logger;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,12 +94,6 @@ public class Context {
 
 	public void compile() {
 		peripherals.values().forEach(Peripheral::compile);
-	}
-
-	public void exportDwarf(File file, /* ElfMachine */ int machine, int bits) {
-		try (DwarfFile dwarf = new DwarfFile(file, machine, bits)) {
-			peripherals.values().forEach(dwarf::createPeripheral);
-		}
 	}
 
 	public Map<String, Peripheral> getPeripheralMap() {

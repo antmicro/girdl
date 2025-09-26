@@ -8,7 +8,6 @@ import com.antmicro.girdl.data.elf.enums.ElfSectionType;
 import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
-import com.antmicro.girdl.model.type.BitsNode;
 import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.model.type.IntegerEnumNode;
 import com.antmicro.girdl.model.type.PointerNode;
@@ -17,7 +16,6 @@ import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.model.type.TypedefNode;
 import com.antmicro.girdl.model.type.UnionNode;
 import com.antmicro.girdl.test.Util;
-import com.antmicro.girdl.util.log.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -56,7 +54,7 @@ public class ElfFileTest {
 		Assertions.assertFalse(sections.contains(".text")); // and no executable code to link with
 
 		String symbols = Util.runCommand("readelf", "-s", temp.getAbsolutePath()).output();
-		Assertions.assertTrue(symbols.contains("0: 1122334455667788     4 OBJECT  GLOBAL DEFAULT    4 SYMBOL_NAME"));
+		Assertions.assertTrue(symbols.contains("0: 1122334455667788     4 OBJECT  GLOBAL DEFAULT    5 SYMBOL_NAME"));
 
 	}
 
@@ -101,7 +99,7 @@ public class ElfFileTest {
 		Assertions.assertTrue(segments.contains("There are no program headers in this file."));
 
 		String symbols = Util.runCommand("readelf", "-s", temp.getAbsolutePath()).output();
-		Assertions.assertTrue(symbols.contains("0: 0000001234567890    16 OBJECT  GLOBAL DEFAULT    4 name"));
+		Assertions.assertTrue(symbols.contains("0: 0000001234567890    16 OBJECT  GLOBAL DEFAULT    5 name"));
 
 		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(debug.contains("DW_AT_producer    : girdl"));
@@ -137,7 +135,7 @@ public class ElfFileTest {
 		Assertions.assertFalse(all.contains("Warning"));
 
 		String symbols = Util.runCommand("readelf", "-s", temp.getAbsolutePath()).output();
-		Assertions.assertTrue(symbols.contains("0: 0000001234567890    16 OBJECT  GLOBAL DEFAULT    4 name"));
+		Assertions.assertTrue(symbols.contains("0: 0000001234567890    16 OBJECT  GLOBAL DEFAULT    5 name"));
 
 		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(debug.contains("DW_TAG_array_type"));
@@ -154,13 +152,16 @@ public class ElfFileTest {
 
 		File temp = Util.createTempFile(".dwarf");
 
-		BitsNode outer = BitsNode.of(BaseNode.of(4))
-				.addField(4, "bf_1", "")
-				.addField(2, "bf_2", "")
-				.addField(2, "bf_3", "")
-				.addField(24, "bf_4", "");
+		StructNode outer = StructNode.of("this_name_should_not_be_saved")
+				.addBitField(4, "bf_1", "")
+				.addBitField(2, "bf_2", "")
+				.addBitField(2, "bf_3", "")
+				.addBitField(24, "bf_4", "")
+				.setFixedSize(4)
+				.markAnonymous();
 
 		Assertions.assertEquals(4, outer.size(4));
+		Assertions.assertTrue(outer.isAnonymous());
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.I386, 32)) {
 			dwarf.createVariable(outer, "name", 0x1234567890L);
@@ -171,9 +172,10 @@ public class ElfFileTest {
 		Assertions.assertFalse(all.contains("Warning"));
 
 		String symbols = Util.runCommand("readelf", "-s", temp.getAbsolutePath()).output();
-		Assertions.assertTrue(symbols.contains("0: 0000001234567890     4 OBJECT  GLOBAL DEFAULT    4 name"));
+		Assertions.assertTrue(symbols.contains("0: 0000001234567890     4 OBJECT  GLOBAL DEFAULT    5 name"));
 
 		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertFalse(debug.contains("this_name_should_not_be_saved"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : bf_1"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : bf_2"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : bf_3"));

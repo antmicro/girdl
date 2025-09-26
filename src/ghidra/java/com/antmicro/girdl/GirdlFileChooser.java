@@ -17,14 +17,12 @@ package com.antmicro.girdl;
 
 import com.antmicro.girdl.data.FilePredicate;
 import com.antmicro.girdl.data.Importer;
-import com.antmicro.girdl.util.file.Resource;
 import docking.options.editor.FileChooserEditor;
 import ghidra.util.filechooser.GhidraFileChooserModel;
 import ghidra.util.filechooser.GhidraFileFilter;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
-import java.util.Optional;
 
 public class GirdlFileChooser extends FileChooserEditor {
 

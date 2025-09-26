@@ -36,17 +36,11 @@ import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.TypedefDataType;
 import ghidra.program.model.data.UnionDataType;
-import ghidra.program.model.listing.FunctionSignature;
 import ghidra.util.Msg;
-import ghidra.util.UniversalIdGenerator;
 
 public class GhidraTypeAdapter implements Adapter<DataType> {
 
 	public static final GhidraTypeAdapter INSTANCE = new GhidraTypeAdapter();
-
-	private GhidraTypeAdapter() {
-		UniversalIdGenerator.initialize(); // We need to call this before we can use Ghidra types in tests
-	}
 
 	@Override
 	public DataType adaptArray(ArrayNode type) {
@@ -92,10 +86,20 @@ public class GhidraTypeAdapter implements Adapter<DataType> {
 
 	@Override
 	public DataType adaptStruct(StructNode element) {
-		StructureDataType type = new StructureDataType(element.name, 0);
+		StructureDataType type = new StructureDataType(element.name + (element.isAnonymous() ? StructNode.INLINE_SUFFIX : ""), 0);
 
-		for (StructNode.Entry field : element.fields) {
-			type.add(field.type.adapt(this), field.name, field.description);
+		try {
+			for (StructNode.Entry field : element.fields) {
+
+				if (field.isBitField()) {
+					type.addBitField(field.type.adapt(this), field.bits, field.name, field.description);
+					continue;
+				}
+
+				type.add(field.type.adapt(this), field.name, field.description);
+			}
+		} catch (Exception e) {
+			Msg.error(this, e);
 		}
 
 		return type;

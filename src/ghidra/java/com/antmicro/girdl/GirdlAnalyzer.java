@@ -17,7 +17,6 @@ package com.antmicro.girdl;
 
 import com.antmicro.girdl.data.Context;
 import com.antmicro.girdl.data.Importer;
-import com.antmicro.girdl.data.elf.enums.ElfMachine;
 import com.antmicro.girdl.util.Lazy;
 import com.antmicro.girdl.util.task.RecursiveTaskMonitor;
 import com.google.common.base.Stopwatch;
@@ -40,7 +39,6 @@ import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
 import ghidra.util.task.TaskMonitor;
 
-import java.io.File;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -108,7 +106,12 @@ public class GirdlAnalyzer extends AbstractAnalyzer {
 
 		if (!export.isEmpty()) {
 			Msg.info(this, "Exporting DWARF data for all peripherals to '" + export + "'...");
-			context.exportDwarf(new File(export), ArchitectureFinder.guessElfMachine(program, ElfMachine.NONE), program.getDefaultPointerSize() * 8);
+
+			try (DwarfFile dwarf = DwarfHelper.of(new File(export), program)) {
+				context.getPeripheralMap().values().forEach(peripheral -> {
+					dwarf.createPeripheral(peripheral, 0);
+				});
+			}
 		}
 
 		// don't run unless we have something to mark

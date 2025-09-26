@@ -53,7 +53,7 @@ public class DwarfFile extends ElfFile {
 	private final SegmentedBuffer info;
 	private final SegmentedBuffer dies;
 	private final SegmentedBuffer abbrev;
-	private final SegmentedBuffer bss;
+	protected final SegmentedBuffer bss;
 
 	private final Map<TypeNode, DataWriter> types = new HashMap<>();
 	private final int bits;
@@ -90,7 +90,7 @@ public class DwarfFile extends ElfFile {
 		// we may want to place string into the debug_str section, this is how we would define that section correctly:
 		// createSection(".debug_str", ElfSectionType.PROGBITS, ElfSectionFlag.MERGE | ElfSectionFlag.STRINGS, 1, 0);
 
-		bss = createSection(".bss", ElfSectionType.NOBITS, ElfSectionFlag.WRITE | ElfSectionFlag.ALLOC, 32, 0, null);
+		bss = createSection(".bss", ElfSectionType.NOBITS, ElfSectionFlag.WRITE | ElfSectionFlag.ALLOC, 0, 0, null);
 		info = createSection(".debug_info", ElfSectionType.PROGBITS, ElfSectionFlag.NONE, 1, 0, null);
 		SegmentedBuffer debugAbbrev = createSection(".debug_abbrev", ElfSectionType.PROGBITS, ElfSectionFlag.NONE, 1, 0, null);
 
@@ -189,17 +189,17 @@ public class DwarfFile extends ElfFile {
 
 	}
 
-	public void createPeripheral(Peripheral peripheral) {
+	public void createPeripheral(Peripheral peripheral, long offset) {
 		TypeNode node = peripheral.getType(PassTypeAdapter.INSTANCE);
-		createType(node);
+		createType(node, dies);
 
 		peripheral.bindings.forEach(binding -> {
-			createVariable(node, binding.name, binding.address);
+			createVariable(node, binding.name, binding.address + offset);
 		});
 	}
 
 	public void createVariable(TypeNode node, String name, long address) {
-		DataWriter type = createType(node);
+		DataWriter type = createType(node, dies);
 
 		SegmentedBuffer buffer = variable.create(dies);
 		buffer.putString(name).putInt(() -> type.offset() - info.offset());
@@ -213,7 +213,11 @@ public class DwarfFile extends ElfFile {
 		head.putUnsignedLeb128(body.size()); // not linked!
 	}
 
-	public DataWriter createType(TypeNode type) {
+	public void createType(TypeNode type) {
+		createType(type, dies);
+	}
+
+	private DataWriter createType(TypeNode type, SegmentedBuffer dies) {
 
 		if (type == null) {
 			return null;
@@ -226,34 +230,44 @@ public class DwarfFile extends ElfFile {
 		}
 
 		return switch (type) {
-			case BaseNode node -> fromBaseNode(node);
-			case ArrayNode node -> fromArrayNode(node);
-			case BitsNode node -> fromBitsNode(node);
-			case UnionNode node -> fromStructNode(node, union);
-			case StructNode node -> fromStructNode(node, structure);
-			case TypedefNode node -> fromTypedefNode(node);
-			case PointerNode node -> fromPointerNode(node);
-			case IntegerEnumNode node -> fromIntegerEnumNode(node);
-			case FunctionNode node -> fromFunctionNode(node);
+			case BaseNode node -> fromBaseNode(node, dies);
+			case ArrayNode node -> fromArrayNode(node, dies);
+			case BitsNode node -> fromBitsNode(node, dies);
+			case UnionNode node -> fromStructNode(node, union, dies);
+			case StructNode node -> fromStructNode(node, node.isAnonymous() ? anonymous : structure, dies);
+			case TypedefNode node -> fromTypedefNode(node, dies);
+			case PointerNode node -> fromPointerNode(node, dies);
+			case IntegerEnumNode node -> fromIntegerEnumNode(node, dies);
+			case FunctionNode node -> fromFunctionNode(node, dies);
 
 			default -> throw new RuntimeException("Unknown type node " + type + "!");
 		};
 	}
 
-	private DataWriter fromBaseNode(BaseNode type) {
-		DataWriter buffer = primitive.create(dies);
+	private SegmentedBuffer beginType(TypeNode type, Template template, SegmentedBuffer dies) {
+		SegmentedBuffer buffer = template.create(dies);
+		types.put(type, buffer);
+
+		return buffer;
+	}
+
+	private DataWriter fromBaseNode(BaseNode type, SegmentedBuffer dies) {
+		DataWriter buffer = beginType(type, primitive, dies);
+
 		buffer.putByte(type.bytes);
 		buffer.putByte(DwarfEncoding.UNSIGNED);
 		buffer.putString(type.toString());
 
-		types.put(type, buffer);
 		return buffer;
 	}
 
-	private DataWriter fromArrayNode(ArrayNode type) {
-		DataWriter element = createType(type.element);
+	private DataWriter fromArrayNode(ArrayNode type, SegmentedBuffer dies) {
+		SegmentedBuffer before = dies.putSegment();
+		SegmentedBuffer buffer = beginType(type, array, dies);
 
-		SegmentedBuffer buffer = array.create(dies);
+		// dependencies
+		DataWriter element = createType(type.element, before);
+
 		buffer.putInt(() -> element.offset() - info.offset());
 		buffer.putShort(type.size(bytes));
 
@@ -265,10 +279,11 @@ public class DwarfFile extends ElfFile {
 		return buffer;
 	}
 
-	private DataWriter fromBitsNode(BitsNode type) {
+	private DataWriter fromBitsNode(BitsNode type, SegmentedBuffer dies) {
 		int bytes = type.underlying.bytes;
 
-		DataWriter field = integral.getOrCompute(() -> createType(BaseNode.of(8)));
+		// this is ok to do first, s it won't ever form a loop
+		DataWriter field = integral.getOrCompute(() -> createType(BaseNode.of(8), dies));
 
 		SegmentedBuffer buffer = anonymous.create(dies);
 		buffer.putShort(bytes);
@@ -289,7 +304,7 @@ public class DwarfFile extends ElfFile {
 
 		final int remaining = bytes * 8 - offset;
 
-		// make sure our field isn't too small
+		// make sure our bitfield isn't too small
 		if (remaining > 0) {
 
 			bitfield.create(buffer)
@@ -306,65 +321,109 @@ public class DwarfFile extends ElfFile {
 		return buffer;
 	}
 
-	private DataWriter fromStructNode(StructNode type, Template template) {
+	private DataWriter fromStructNode(StructNode type, Template template, SegmentedBuffer dies) {
+		SegmentedBuffer before = dies.putSegment();
+		SegmentedBuffer buffer = beginType(type, template, dies);
 
 		for (StructNode.Entry entry : type.fields) {
-			createType(entry.type);
+			createType(entry.type, before);
 		}
 
-		SegmentedBuffer buffer = template.create(dies);
-		buffer.putString(type.name);
+		// the base type will ony be directly needed if we need to add padding
+		// and padding will only ever be added if the structure is of fixed size
+		if (type.isFixedSize()) {
+			createType(BaseNode.BITS, before);
+		}
+
+		if (!type.isAnonymous()) {
+			buffer.putString(type.name);
+		}
+
 		buffer.putShort(type.size(bytes));
 
 		int offset = 0;
 
 		for (StructNode.Entry entry : type.fields) {
+
+			// reference types we already pre-cached before
 			DataWriter typeBuffer = types.get(entry.type);
 
 			if (typeBuffer == null) {
 				throw new RuntimeException("Undefined type in tree refed by name '" + entry.name + "' (" + entry.type + "), is the type model not a tree?");
 			}
 
+			if (entry.isBitField()) {
+				bitfield.create(buffer)
+						.putString(entry.name)
+						.putShort(offset)
+						.putShort(entry.bits)
+						.putInt(() -> typeBuffer.offset() - info.offset());
+
+				offset += entry.bits;
+				continue;
+			}
+
 			member.create(buffer)
 					.putString(entry.name)
-					.putShort(offset)
+					.putShort(offset / 8)
 					.putInt(() -> typeBuffer.offset() - info.offset());
 
-			offset += entry.type.size(bytes);
+			// keep the offset in bits
+			offset += entry.type.size(bytes) * 8;
+		}
+
+		if (type.isFixedSize()) {
+
+			final int remaining = type.getFixedSize() * 8 - offset;
+
+			// make sure our bitfield isn't too small
+			if (remaining > 0) {
+
+				// reference types we already pre-cached before
+				DataWriter field = types.get(BaseNode.BITS);
+
+				bitfield.create(buffer)
+						.putString("padding")
+						.putShort(offset)
+						.putShort(remaining)
+						.putInt(() -> field.offset() - info.offset());
+
+			}
+
 		}
 
 		buffer.putByte(0);
 
-		types.put(type, buffer);
 		return buffer;
 	}
 
-	private DataWriter fromTypedefNode(TypedefNode type) {
+	private DataWriter fromTypedefNode(TypedefNode type, SegmentedBuffer dies) {
+		SegmentedBuffer before = dies.putSegment();
+		SegmentedBuffer buffer = beginType(type, typedef, dies);
 
-		DataWriter underlying = createType(type.underlying);
+		DataWriter underlying = createType(type.underlying, before);
 
-		SegmentedBuffer buffer = typedef.create(dies);
 		buffer.putString(type.name);
 		buffer.putInt(() -> underlying.offset() - info.offset());
 
-		types.put(type, buffer);
 		return buffer;
 	}
 
-	private DataWriter fromPointerNode(PointerNode type) {
+	private DataWriter fromPointerNode(PointerNode type, SegmentedBuffer dies) {
+		SegmentedBuffer before = dies.putSegment();
+		SegmentedBuffer buffer = beginType(type, pointer, dies);
 
-		DataWriter underlying = createType(type.reference);
+		DataWriter underlying = createType(type.reference, before);
 
-		SegmentedBuffer buffer = pointer.create(dies);
 		buffer.putInt(() -> underlying.offset() - info.offset());
 
-		types.put(type, buffer);
 		return buffer;
 	}
 
-	private DataWriter fromIntegerEnumNode(IntegerEnumNode type) {
-		DataWriter underlying = createType(type.underlying);
+	private DataWriter fromIntegerEnumNode(IntegerEnumNode type, SegmentedBuffer dies) {
+		DataWriter underlying = createType(type.underlying, dies);
 
+		// integer enums are based on BaseNodes, so it's fine if we first resolve before creating the node
 		SegmentedBuffer buffer = enumeration.create(dies);
 		buffer.putString(type.name);
 		buffer.putInt(() -> underlying.offset() - info.offset());
@@ -383,14 +442,16 @@ public class DwarfFile extends ElfFile {
 		return buffer;
 	}
 
-	private DataWriter fromFunctionNode(FunctionNode type) {
-		DataWriter returnType = createType(type.result);
+	private DataWriter fromFunctionNode(FunctionNode type, SegmentedBuffer dies) {
+		SegmentedBuffer before = dies.putSegment();
+		SegmentedBuffer buffer = beginType(type, type.result == null ? procedure : function, dies);
+
+		DataWriter returnType =  createType(type.result, before);
 
 		for (FunctionNode.Parameter entry : type.parameters) {
-			createType(entry.type);
+			createType(entry.type, dies);
 		}
 
-		SegmentedBuffer buffer = (returnType == null ? procedure : function).create(dies);
 		buffer.putString(type.name);
 		buffer.putLong(type.low);
 		buffer.putLong(type.high);
@@ -401,7 +462,7 @@ public class DwarfFile extends ElfFile {
 
 		for (FunctionNode.Parameter entry : type.parameters) {
 
-			DataWriter parameterBuffer = createType(entry.type);
+			DataWriter parameterBuffer = createType(entry.type, dies);
 
 			parameter.create(buffer)
 					.putString(entry.name)
@@ -410,8 +471,6 @@ public class DwarfFile extends ElfFile {
 		}
 
 		buffer.putByte(0);
-
-		types.put(type, buffer);
 		return buffer;
 	}
 
@@ -427,6 +486,10 @@ public class DwarfFile extends ElfFile {
 		buffer.putBool(hasChildren);
 
 		return new Template(buffer, type);
+	}
+
+	public int getAddressWidth() {
+		return bytes;
 	}
 
 	protected static class Template {

@@ -27,6 +27,10 @@ public class Logger {
 		consumer.trace(origin, message);
 	}
 
+	public static void debug(Object origin, Object message) {
+		consumer.debug(origin, message);
+	}
+
 	public static void info(Object origin, Object message) {
 		consumer.info(origin, message);
 	}

@@ -19,7 +19,9 @@ import ghidra.framework.plugintool.util.PluginPackage;
 import resources.ResourceManager;
 
 public class GirdlPluginPackage extends PluginPackage {
-	public static final String NAME = "girdl";
+
+	/// This value MUST be uppercase as it's used as a class name
+	public static final String NAME = "Girdl";
 	private static final String DESCRIPTION = "Peripheral registers plugin.";
 
 	public GirdlPluginPackage() {

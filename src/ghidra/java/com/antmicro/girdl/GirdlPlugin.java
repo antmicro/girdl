@@ -15,8 +15,17 @@
  */
 package com.antmicro.girdl;
 
+import com.antmicro.girdl.data.elf.DwarfFile;
+import com.antmicro.girdl.util.DwarfExporter;
 import com.antmicro.girdl.util.GhidraFile;
 import com.antmicro.girdl.util.log.Logger;
+import com.google.common.base.Stopwatch;
+import docking.ActionContext;
+import docking.action.DockingAction;
+import docking.action.MenuData;
+import docking.tool.ToolConstants;
+import docking.widgets.filechooser.GhidraFileChooser;
+import docking.widgets.filechooser.GhidraFileChooserMode;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
 import ghidra.framework.plugintool.PluginInfo;
@@ -24,8 +33,11 @@ import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.util.HelpLocation;
 
+import java.io.File;
+import java.util.concurrent.TimeUnit;
+
 @PluginInfo(
-	status = PluginStatus.STABLE,
+	status = PluginStatus.RELEASED,
 	packageName = GirdlPluginPackage.NAME,
 	category = PluginCategoryNames.ANALYSIS,
 	shortDescription = "Registry description plugin",
@@ -37,6 +49,71 @@ public class GirdlPlugin extends ProgramPlugin {
 
 	public GirdlPlugin(PluginTool tool) {
 		super(tool);
+
+		createActions();
+	}
+
+	private void createActions() {
+
+		DockingAction helloAction = new DockingAction("Export DWARF", getName()) {
+
+			private File askForExportFile() {
+
+				GhidraFileChooser chooser = new GhidraFileChooser(null);
+				chooser.setTitle("Export DWARF As...");
+				chooser.setApproveButtonText("Save As");
+				chooser.setFileSelectionMode(GhidraFileChooserMode.FILES_ONLY);
+				chooser.setMultiSelectionEnabled(false);
+
+				File selected = chooser.getSelectedFile(true);
+				chooser.dispose();
+				if (chooser.wasCancelled()) {
+					return null;
+				}
+
+				return selected;
+
+			}
+
+			private long askForEntryPoint() {
+				EntrypointChooser chooser = new EntrypointChooser(currentProgram);
+				tool.showDialog(chooser);
+
+				return chooser.getEntrypointAddress();
+			}
+
+			@Override
+			public void actionPerformed(ActionContext context) {
+				File file = askForExportFile();
+
+				if (file == null) {
+					return;
+				}
+
+				long entrypoint = askForEntryPoint();
+				Stopwatch stopwatch = Stopwatch.createStarted();
+
+				try {
+					DwarfExporter.dumpProgramDebugInfo(file, currentProgram, entrypoint);
+				} catch (Exception e) {
+					Logger.error(this, "Can't write to '" + file.getPath() + "': " + e.getMessage());
+				}
+
+				Logger.info(this, "Finished writing DWARF data in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
+			}
+
+			@Override
+			public boolean isEnabledForContext(ActionContext context) {
+				return currentProgram != null;
+			}
+
+		};
+
+		helloAction.setEnabled(true);
+		helloAction.setMenuBarData(new MenuData(new String[] {ToolConstants.MENU_FILE, "Export to DWARF..."}, "Import Export"));
+
+		tool.addAction(helloAction);
+
 	}
 
 	static {

@@ -17,7 +17,7 @@ package com.antmicro.girdl.model;
 
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
-import com.antmicro.girdl.model.type.BitsNode;
+import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.util.Lazy;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -112,10 +112,12 @@ public class Register implements Comparable<Register> {
 				return underlying;
 			}
 
-			BitsNode bitfield = BitsNode.of(underlying);
+			StructNode bitfield = StructNode.of(name + "bits_" + fields.size());
+			bitfield.markAnonymous();
+			bitfield.setFixedSize(underlying.size(0));
 
 			for (Field field : fields) {
-				bitfield.addField((int) field.size, field.name, field.description);
+				bitfield.addBitField((int) field.size, field.name, field.description);
 			}
 
 			return bitfield;

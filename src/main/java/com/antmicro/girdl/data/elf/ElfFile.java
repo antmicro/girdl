@@ -53,6 +53,7 @@ public class ElfFile implements AutoCloseable {
 
 		createSection("", ElfSectionType.NULL, ElfSectionFlag.NONE, 0, 0, null); // special empty section
 		createSection(SECTION_STRINGS, ElfSectionType.STRTAB, ElfSectionFlag.NONE, 0, 0, null); // section string table
+		createSection(".note.GNU-stack", ElfSectionType.PROGBITS, ElfSectionFlag.NONE, 0, 0, null);
 
 		strings = createSection(".strtab", ElfSectionType.STRTAB, ElfSectionFlag.NONE, 0, 0, null);
 		symbols = createSection(".symtab", ElfSectionType.SYMTAB, ElfSectionFlag.NONE, 8, 0x18, strings);
@@ -120,6 +121,7 @@ public class ElfFile implements AutoCloseable {
 	 * in the constructor.
 	 *
 	 * @param name Name of the section to create, should start with '.'
+	 * @param flags Flags to add to the section
 	 * @param type One of ElfSectionType values
 	 * @param align Required section alignment
 	 * @param element Element size, by default use 0

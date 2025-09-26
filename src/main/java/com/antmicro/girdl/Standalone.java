@@ -56,6 +56,7 @@ public class Standalone {
 		builder.register('o', "output", ArgType.STRING, "Path to output DWARF file, defaults to '" + DEFAULT_OUTPUT + "'");
 		builder.register('q', "quiet", ArgType.FLAG, "Produce less debug output");
 		builder.register('D', "define", ArgType.STRING, "Provide a macro definition for RDL compiler");
+		builder.register('A', "address", ArgType.STRING, "Mount address offset added to each binding");
 
 		// CHECKSTYLE:OFF
 		builder.example("""
@@ -79,6 +80,7 @@ public class Standalone {
 
 		Context context = new Context();
 
+		long entrypoint = args.getOption("address").map(Long::decode).orElse(0L);
 		File output = args.getOption("output").map(File::new).orElseGet(() -> new File(DEFAULT_OUTPUT));
 		Resource[] inputs = args.getOptions("input").stream().map(Standalone::preparePath).map(args.hasFlag("allow-remote") ? Resource::fromUniversalPath : Resource::fromLocalPath).toArray(Resource[]::new);
 		context.macros = args.getOptions("define").stream().map(Macro::parse).toList();
@@ -93,7 +95,7 @@ public class Standalone {
 		}
 
 		try (DwarfFile dwarf = new DwarfFile(output, ElfMachine.I386, 32)) {
-			peripherals.forEach(dwarf::createPeripheral);
+			peripherals.forEach(peripheral -> dwarf.createPeripheral(peripheral, entrypoint));
 		}
 
 	}
