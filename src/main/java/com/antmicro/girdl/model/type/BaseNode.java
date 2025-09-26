@@ -15,33 +15,35 @@
  */
 package com.antmicro.girdl.model.type;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class BaseNode extends TypeNode {
 
-	private static final Map<Integer, BaseNode> CACHE = new HashMap<>();
 	public static final BaseNode BYTE = of(1);
 
 	public final int bytes;
+	public final String name;
 
-	public BaseNode(int bytes) {
+	public BaseNode(int bytes, String name) {
 		this.bytes = bytes;
+		this.name = name;
 	}
 
 	public static BaseNode of(int bytes) {
-		return CACHE.computeIfAbsent(bytes, BaseNode::new);
+		return new BaseNode(bytes, "uint" + (bytes * 8) + "_t");
+	}
+
+	public static BaseNode of(int bytes, String name) {
+		return new BaseNode(bytes, name);
 	}
 
 	@Override
 	public int hashCode() {
-		return bytes;
+		return bytes + 7 * name.hashCode();
 	}
 
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof BaseNode base) {
-			return base.bytes == bytes;
+			return base.bytes == bytes && base.name.equals(name);
 		}
 
 		return false;
@@ -54,7 +56,7 @@ public class BaseNode extends TypeNode {
 
 	@Override
 	public String toString() {
-		return "uint" + (bytes * 8) + "_t";
+		return name;
 	}
 
 	@Override

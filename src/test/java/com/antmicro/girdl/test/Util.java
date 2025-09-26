@@ -64,19 +64,48 @@ public final class Util {
 		Assumptions.assumeTrue(object.getClass().getResource("/i3c/LICENSE") != null, "I3C-core not available, to enable this test run 'git submodule update --init --recursive'");
 	}
 
-	public static String getCommandOutput(String... args) {
+	public static Command runCommand(String... args) {
 
 		Assumptions.assumeTrue(SystemUtils.IS_OS_UNIX, "This test require an UNIX compatible OS");
 
 		try {
-			Process process = Runtime.getRuntime().exec(args);
-			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-			Assertions.assertEquals(0, process.waitFor());
-
-			return reader.lines().collect(Collectors.joining());
+			return new Command(Runtime.getRuntime().exec(args));
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
+
+	public static class Command {
+
+		private final Process process;
+
+		public Command(Process process) {
+			this.process = process;
+
+		}
+
+		public Command withInput(String input) {
+
+			try (PrintWriter writer = new PrintWriter(process.getOutputStream())) {
+				writer.write(input);
+			}
+
+			return this;
+		}
+
+		public String output() {
+			try {
+
+				BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+				Assertions.assertEquals(0, process.waitFor());
+				return reader.lines().collect(Collectors.joining("\n"));
+			} catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+	}
+
+
 
 }

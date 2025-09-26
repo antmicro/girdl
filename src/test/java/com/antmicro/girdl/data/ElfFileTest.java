@@ -10,7 +10,9 @@ import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.BitsNode;
 import com.antmicro.girdl.model.type.StructNode;
+import com.antmicro.girdl.model.type.TypedefNode;
 import com.antmicro.girdl.test.Util;
+import com.antmicro.girdl.util.log.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -28,27 +30,27 @@ public class ElfFileTest {
 			elf.createSymbol("SYMBOL_NAME", 0x1122334455667788L, 4, ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
 		}
 
-		String all = Util.getCommandOutput("readelf",  "-aw", temp.getAbsolutePath());
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
 		Assertions.assertFalse(all.contains("Error"));
 		Assertions.assertFalse(all.contains("Warning"));
 
-		String header = Util.getCommandOutput("readelf", "-h", temp.getAbsolutePath());
+		String header = Util.runCommand("readelf", "-h", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(header.contains("REL (Relocatable file)"));
 		Assertions.assertTrue(header.contains("Advanced Micro Devices X86-64"));
 		Assertions.assertTrue(header.contains("2's complement, little endian"));
 
 		// check that there is no executable code in the generated file
-		String segments = Util.getCommandOutput("readelf", "-l", temp.getAbsolutePath());
+		String segments = Util.runCommand("readelf", "-l", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(segments.contains("There are no program headers in this file."));
 
-		String sections = Util.getCommandOutput("readelf", "-S", temp.getAbsolutePath());
+		String sections = Util.runCommand("readelf", "-S", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(sections.contains(".shstrtab         STRTAB"));
 		Assertions.assertTrue(sections.contains(".strtab           STRTAB"));
 		Assertions.assertTrue(sections.contains(".symtab           SYMTAB"));
 		Assertions.assertTrue(sections.contains(".bss              NOBITS"));
 		Assertions.assertFalse(sections.contains(".text")); // and no executable code to link with
 
-		String symbols = Util.getCommandOutput("readelf", "-s", temp.getAbsolutePath());
+		String symbols = Util.runCommand("readelf", "-s", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(symbols.contains("0: 1122334455667788     4 OBJECT  GLOBAL DEFAULT    4 SYMBOL_NAME"));
 
 	}
@@ -80,23 +82,23 @@ public class ElfFileTest {
 			dwarf.createVariable(outer, "name", 0x1234567890L);
 		}
 
-		String all = Util.getCommandOutput("readelf",  "-aw", temp.getAbsolutePath());
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
 		Assertions.assertFalse(all.contains("Error"));
 		Assertions.assertFalse(all.contains("Warning"));
 
-		String sections = Util.getCommandOutput("readelf", "-S", temp.getAbsolutePath());
+		String sections = Util.runCommand("readelf", "-S", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(sections.contains(".bss              NOBITS"));
 		Assertions.assertTrue(sections.contains(".debug_info       PROGBITS"));
 		Assertions.assertTrue(sections.contains(".debug_abbrev     PROGBITS"));
 		Assertions.assertFalse(sections.contains(".text"));
 
-		String segments = Util.getCommandOutput("readelf", "-l", temp.getAbsolutePath());
+		String segments = Util.runCommand("readelf", "-l", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(segments.contains("There are no program headers in this file."));
 
-		String symbols = Util.getCommandOutput("readelf", "-s", temp.getAbsolutePath());
+		String symbols = Util.runCommand("readelf", "-s", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(symbols.contains("0: 0000001234567890    16 OBJECT  GLOBAL DEFAULT    4 name"));
 
-		String debug = Util.getCommandOutput("readelf", "-w", temp.getAbsolutePath());
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(debug.contains("DW_AT_producer    : girdl"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : peripherals"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : uint64_t"));
@@ -125,14 +127,14 @@ public class ElfFileTest {
 			dwarf.createVariable(outer, "name", 0x1234567890L);
 		}
 
-		String all = Util.getCommandOutput("readelf",  "-aw", temp.getAbsolutePath());
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
 		Assertions.assertFalse(all.contains("Error"));
 		Assertions.assertFalse(all.contains("Warning"));
 
-		String symbols = Util.getCommandOutput("readelf", "-s", temp.getAbsolutePath());
+		String symbols = Util.runCommand("readelf", "-s", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(symbols.contains("0: 0000001234567890    16 OBJECT  GLOBAL DEFAULT    4 name"));
 
-		String debug = Util.getCommandOutput("readelf", "-w", temp.getAbsolutePath());
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(debug.contains("DW_TAG_array_type"));
 		Assertions.assertTrue(debug.contains("DW_TAG_subrange_type"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : PAIR"));
@@ -159,14 +161,14 @@ public class ElfFileTest {
 			dwarf.createVariable(outer, "name", 0x1234567890L);
 		}
 
-		String all = Util.getCommandOutput("readelf",  "-aw", temp.getAbsolutePath());
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
 		Assertions.assertFalse(all.contains("Error"));
 		Assertions.assertFalse(all.contains("Warning"));
 
-		String symbols = Util.getCommandOutput("readelf", "-s", temp.getAbsolutePath());
+		String symbols = Util.runCommand("readelf", "-s", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(symbols.contains("0: 0000001234567890     4 OBJECT  GLOBAL DEFAULT    4 name"));
 
-		String debug = Util.getCommandOutput("readelf", "-w", temp.getAbsolutePath());
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(debug.contains("DW_AT_name        : bf_1"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : bf_2"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : bf_3"));
@@ -178,6 +180,41 @@ public class ElfFileTest {
 		Assertions.assertTrue(debug.contains("DW_AT_data_bit_offset: 4"));
 		Assertions.assertTrue(debug.contains("DW_AT_data_bit_offset: 6"));
 		Assertions.assertTrue(debug.contains("DW_AT_data_bit_offset: 8"));
+
+	}
+
+	@Test
+	void testDwarfFileWithTypedef() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		TypedefNode typedef = TypedefNode.of(BaseNode.of(4, "named_4_bytes"), "another");
+
+		Assertions.assertEquals(4, typedef.size());
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.I386, 32)) {
+			dwarf.createType(typedef);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).output();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("DW_TAG_base_type"));
+		Assertions.assertTrue(debug.contains("DW_TAG_typedef"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : named_4_bytes"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : another"));
+		Assertions.assertTrue(debug.contains("DW_AT_type        :"));
+
+		String debugger = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\ninfo types").output();
+
+		Assertions.assertTrue(debugger.contains("""
+				(gdb) All defined types:
+				
+				File peripherals:
+				\ttypedef named_4_bytes another;
+				\tnamed_4_bytes"""));
 
 	}
 

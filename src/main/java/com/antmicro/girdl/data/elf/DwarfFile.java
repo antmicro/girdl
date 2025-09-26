@@ -33,6 +33,7 @@ import com.antmicro.girdl.model.type.BitsNode;
 import com.antmicro.girdl.model.type.PassTypeAdapter;
 import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
+import com.antmicro.girdl.model.type.TypedefNode;
 import com.antmicro.girdl.util.Lazy;
 
 import java.io.File;
@@ -62,6 +63,7 @@ public class DwarfFile extends ElfFile {
 	private final Template array;
 	private final Template subrange;
 	private final Template variable;
+	private final Template typedef;
 
 	// type used for bitfield fields
 	private final Lazy<DataWriter> integral = new Lazy<>();
@@ -133,6 +135,10 @@ public class DwarfFile extends ElfFile {
 		subrange = createTemplate(DwarfTag.SUBRANGE_TYPE, false)
 				.add(DwarfAttr.UPPER_BOUND, DwarfForm.DATA2);
 
+		typedef = createTemplate(DwarfTag.TYPEDEF, false)
+				.add(DwarfAttr.NAME, DwarfForm.STRING)
+				.add(DwarfAttr.TYPE, DwarfForm.REF4);
+
 		unit.create(dies)
 				.putString("girdl")
 				.putByte(1)
@@ -164,7 +170,7 @@ public class DwarfFile extends ElfFile {
 		head.putUnsignedLeb128(body.size()); // not linked!
 	}
 
-	protected DataWriter createType(TypeNode type) {
+	public DataWriter createType(TypeNode type) {
 		DataWriter writer = types.get(type);
 
 		if (writer != null) {
@@ -265,6 +271,18 @@ public class DwarfFile extends ElfFile {
 			}
 
 			buffer.putByte(0);
+
+			types.put(type, buffer);
+			return buffer;
+		}
+
+		if (type instanceof TypedefNode node) {
+
+			DataWriter underlying = createType(node.underlying);
+
+			SegmentedBuffer buffer = typedef.create(dies);
+			buffer.putString(node.name);
+			buffer.putInt(() -> underlying.offset() - info.offset());
 
 			types.put(type, buffer);
 			return buffer;
