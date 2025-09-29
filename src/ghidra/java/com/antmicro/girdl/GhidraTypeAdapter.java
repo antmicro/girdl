@@ -19,6 +19,7 @@ import com.antmicro.girdl.model.type.Adapter;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.BitsNode;
+import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.model.type.IntegerEnumNode;
 import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
@@ -27,9 +28,13 @@ import ghidra.app.util.bin.StructConverter;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.EnumDataType;
+import ghidra.program.model.data.FunctionDefinitionDataType;
+import ghidra.program.model.data.ParameterDefinition;
+import ghidra.program.model.data.ParameterDefinitionImpl;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.TypedefDataType;
+import ghidra.program.model.listing.FunctionSignature;
 import ghidra.util.Msg;
 import ghidra.util.UniversalIdGenerator;
 
@@ -113,6 +118,27 @@ public class GhidraTypeAdapter implements Adapter<DataType> {
 		}
 
 		return enumeration;
+	}
+
+	@Override
+	public DataType adaptFunction(FunctionNode type) {
+		FunctionDefinitionDataType function = new FunctionDefinitionDataType(type.name);
+		function.setNoReturn(type.hasNoReturn());
+
+		if (!type.hasNoReturn()) {
+			function.setReturnType(type.result.adapt(this));
+		}
+
+		ParameterDefinition[] params = new ParameterDefinition[type.parameters.size()];
+
+		for (int i = 0; i < params.length; i ++) {
+			FunctionNode.Parameter parameter = type.parameters.get(i);
+
+			params[i] = new ParameterDefinitionImpl(parameter.name, parameter.type.adapt(this), "");
+		}
+
+		function.setArguments(params);
+		return function;
 	}
 
 }

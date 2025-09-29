@@ -58,4 +58,9 @@ public final class PassTypeAdapter implements Adapter<TypeNode> {
 		return type;
 	}
 
+	@Override
+	public TypeNode adaptFunction(FunctionNode type) {
+		return type;
+	}
+
 }

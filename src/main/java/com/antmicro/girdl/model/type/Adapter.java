@@ -24,5 +24,6 @@ public interface Adapter<T> {
 	T adaptTypedef(TypedefNode type);
 	T adaptPointer(PointerNode type);
 	T adaptEnum(IntegerEnumNode type);
+	T adaptFunction(FunctionNode type);
 
 }

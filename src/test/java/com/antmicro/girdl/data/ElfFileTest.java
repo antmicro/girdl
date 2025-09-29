@@ -9,6 +9,7 @@ import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.BitsNode;
+import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.model.type.IntegerEnumNode;
 import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
@@ -216,8 +217,8 @@ public class ElfFileTest {
 				(gdb) All defined types:
 				
 				File peripherals:
-				\ttypedef named_4_bytes another;
-				\tnamed_4_bytes"""));
+					typedef named_4_bytes another;
+					named_4_bytes"""));
 
 	}
 
@@ -246,8 +247,8 @@ public class ElfFileTest {
 				(gdb) All defined types:
 				
 				File peripherals:
-				\tnamed_4_bytes
-				\ttypedef named_4_bytes * ptr;"""));
+					named_4_bytes
+					typedef named_4_bytes * ptr;"""));
 
 	}
 
@@ -285,6 +286,47 @@ public class ElfFileTest {
 		String debugger = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\nptype enum my_enum").output();
 
 		Assertions.assertTrue(debugger.contains("(gdb) type = enum my_enum {A = 123, B = 65535, C = 3435973836}"));
+
+	}
+
+	@Test
+	void testDwarfFileWithFunction() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		FunctionNode type = FunctionNode.of(BaseNode.of(3, "int"), "foo");
+		type.addParameter("a", BaseNode.of(4, "int"));
+		type.addParameter("b", BaseNode.of(8, "long"));
+		type.addParameter("c", BaseNode.of(8, "long"));
+		type.setCodeSpan(0x0000F032, 0x0000FE00);
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.I386, 32)) {
+			dwarf.createType(type);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("DW_TAG_base_type"));
+		Assertions.assertTrue(debug.contains("DW_TAG_subprogram"));
+		Assertions.assertTrue(debug.contains("DW_TAG_formal_parameter"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : a"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : b"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : c"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : long"));
+
+		String functions = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\ninfo functions").output();
+		Assertions.assertTrue(functions.contains("""
+				(gdb) All defined functions:
+				
+				File peripherals:
+					static int foo(int, long, long);
+				"""));
+
+		String symbol = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\ninfo address foo").output();
+		Assertions.assertTrue(symbol.contains("(gdb) Symbol \"foo\" is a function at address 0xf032."));
 
 	}
 
