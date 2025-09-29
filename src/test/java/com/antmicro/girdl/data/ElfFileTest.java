@@ -15,6 +15,7 @@ import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.model.type.TypedefNode;
+import com.antmicro.girdl.model.type.UnionNode;
 import com.antmicro.girdl.test.Util;
 import com.antmicro.girdl.util.log.Logger;
 import org.junit.jupiter.api.Assertions;
@@ -327,6 +328,46 @@ public class ElfFileTest {
 
 		String symbol = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\ninfo address foo").output();
 		Assertions.assertTrue(symbol.contains("(gdb) Symbol \"foo\" is a function at address 0xf032."));
+
+	}
+
+	@Test
+	void testDwarfFileWithUnion() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		UnionNode type = UnionNode.of("my_union");
+		type.addField(StructNode.of("Pos")
+				.addField(BaseNode.of(4), "x", "")
+				.addField(BaseNode.of(4), "y", ""), "a", "");
+		type.addField(BaseNode.of(4), "b", "");
+		type.addField(BaseNode.of(2), "c", "");
+
+		Assertions.assertEquals(8, type.size(4));
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.I386, 32)) {
+			dwarf.createType(type);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("DW_TAG_union"));
+		Assertions.assertTrue(debug.contains("DW_TAG_structure"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : my_union"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : x"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : y"));
+
+		String debugger = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\nptype union my_union").output();
+		Assertions.assertTrue(debugger.contains("""
+				(gdb) type = union my_union {
+				    struct Pos a;
+				    uint32_t b;
+				    uint16_t c;
+				}
+				"""));
 
 	}
 

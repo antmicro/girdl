@@ -63,4 +63,9 @@ public final class PassTypeAdapter implements Adapter<TypeNode> {
 		return type;
 	}
 
+	@Override
+	public TypeNode adaptUnion(UnionNode type) {
+		return type;
+	}
+
 }

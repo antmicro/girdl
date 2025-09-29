@@ -37,6 +37,7 @@ import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.model.type.TypedefNode;
+import com.antmicro.girdl.model.type.UnionNode;
 import com.antmicro.girdl.util.Lazy;
 
 import java.io.File;
@@ -61,6 +62,7 @@ public class DwarfFile extends ElfFile {
 	private final Template unit;
 	private final Template structure;
 	private final Template anonymous;
+	private final Template union;
 	private final Template member;
 	private final Template bitfield;
 	private final Template primitive;
@@ -116,6 +118,10 @@ public class DwarfFile extends ElfFile {
 				.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA2);
 
 		anonymous = createTemplate(DwarfTag.STRUCTURE_TYPE, true)
+				.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA2);
+
+		union = createTemplate(DwarfTag.UNION_TYPE, true)
+				.add(DwarfAttr.NAME, DwarfForm.STRING)
 				.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA2);
 
 		member = createTemplate(DwarfTag.MEMBER, false)
@@ -223,7 +229,8 @@ public class DwarfFile extends ElfFile {
 			case BaseNode node -> fromBaseNode(node);
 			case ArrayNode node -> fromArrayNode(node);
 			case BitsNode node -> fromBitsNode(node);
-			case StructNode node -> fromStructNode(node);
+			case UnionNode node -> fromStructNode(node, union);
+			case StructNode node -> fromStructNode(node, structure);
 			case TypedefNode node -> fromTypedefNode(node);
 			case PointerNode node -> fromPointerNode(node);
 			case IntegerEnumNode node -> fromIntegerEnumNode(node);
@@ -299,13 +306,13 @@ public class DwarfFile extends ElfFile {
 		return buffer;
 	}
 
-	private DataWriter fromStructNode(StructNode type) {
+	private DataWriter fromStructNode(StructNode type, Template template) {
 
 		for (StructNode.Entry entry : type.fields) {
 			createType(entry.type);
 		}
 
-		SegmentedBuffer buffer = structure.create(dies);
+		SegmentedBuffer buffer = template.create(dies);
 		buffer.putString(type.name);
 		buffer.putShort(type.size(bytes));
 

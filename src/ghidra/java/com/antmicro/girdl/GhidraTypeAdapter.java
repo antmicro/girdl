@@ -24,6 +24,7 @@ import com.antmicro.girdl.model.type.IntegerEnumNode;
 import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypedefNode;
+import com.antmicro.girdl.model.type.UnionNode;
 import ghidra.app.util.bin.StructConverter;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
@@ -34,6 +35,7 @@ import ghidra.program.model.data.ParameterDefinitionImpl;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.TypedefDataType;
+import ghidra.program.model.data.UnionDataType;
 import ghidra.program.model.listing.FunctionSignature;
 import ghidra.util.Msg;
 import ghidra.util.UniversalIdGenerator;
@@ -139,6 +141,17 @@ public class GhidraTypeAdapter implements Adapter<DataType> {
 
 		function.setArguments(params);
 		return function;
+	}
+
+	@Override
+	public DataType adaptUnion(UnionNode type) {
+		UnionDataType union = new UnionDataType(type.name);
+
+		for (UnionNode.Entry field : type.fields) {
+			union.add(field.type.adapt(this), field.name, field.description);
+		}
+
+		return union;
 	}
 
 }

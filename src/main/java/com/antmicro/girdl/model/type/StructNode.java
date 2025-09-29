@@ -23,7 +23,7 @@ public class StructNode extends TypeNode {
 	public final String name;
 	public List<Entry> fields = new ArrayList<>();
 
-	private StructNode(String name) {
+	StructNode(String name) {
 		this.name = name;
 	}
 
