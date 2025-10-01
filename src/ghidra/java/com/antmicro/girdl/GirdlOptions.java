@@ -33,21 +33,18 @@ public class GirdlOptions {
 	static private final String FILE_SOURCE_2 = "Data Source 2";
 	static private final String RDL_MACROS    = "RDL Macros";
 	static private final String RDL_RENODE    = "Use Renode RDL";
-	static private final String EXPORT_DWARF  = "Save as DWARF";
 
 	// values
 	private String firstPath = null;
 	private String secondPath = null;
 	private String macros = null;
 	private boolean renode = false;
-	private String export = null;
 
 	public void register(Options options) {
 		options.registerOption(FILE_SOURCE_1, OptionType.STRING_TYPE, "", GirdlPlugin.HELP, "Registry definitions file path", GirdlFileChooser::new);
 		options.registerOption(FILE_SOURCE_2, OptionType.STRING_TYPE, "", GirdlPlugin.HELP, "Peripheral definitions file path", GirdlFileChooser::new);
 		options.registerOption(RDL_MACROS, OptionType.STRING_TYPE, "VARIANT0", GirdlPlugin.HELP, "List of macro definition to be provided to the RDL parser, ';' separated");
 		options.registerOption(RDL_RENODE, OptionType.BOOLEAN_TYPE, false, GirdlPlugin.HELP, "Load registry definitions from the latest Renode release");
-		options.registerOption(EXPORT_DWARF, OptionType.STRING_TYPE, "", GirdlPlugin.HELP, "Export peripherals to a DWARF symbol file", GirdlFileChooser::new);
 	}
 
 	public void update(Options options) {
@@ -55,7 +52,6 @@ public class GirdlOptions {
 		secondPath = options.getString(FILE_SOURCE_2, secondPath);
 		macros = options.getString(RDL_MACROS, macros);
 		renode = options.getBoolean(RDL_RENODE, renode);
-		export = options.getString(EXPORT_DWARF, export);
 	}
 
 	private List<String> getPathSet() {
@@ -77,10 +73,6 @@ public class GirdlOptions {
 
 	public List<Macro> getMacros() {
 		return Arrays.stream(macros.split(";")).sequential().map(Macro::parse).toList();
-	}
-
-	public String getExportPath() {
-		return export;
 	}
 
 }

@@ -102,18 +102,6 @@ public class GirdlAnalyzer extends AbstractAnalyzer {
 		monitor.setIndeterminate(true);
 		context.compile();
 
-		final String export = config.getExportPath();
-
-		if (!export.isEmpty()) {
-			Msg.info(this, "Exporting DWARF data for all peripherals to '" + export + "'...");
-
-			try (DwarfFile dwarf = DwarfHelper.of(new File(export), program)) {
-				context.getPeripheralMap().values().forEach(peripheral -> {
-					dwarf.createPeripheral(peripheral, 0);
-				});
-			}
-		}
-
 		// don't run unless we have something to mark
 		if (context.getPeripheralMap().isEmpty()) {
 			Msg.info(this, "No peripherals to import, skipping.");
