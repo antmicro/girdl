@@ -28,7 +28,7 @@ export GHIDRA_INSTALL_DIR="..."
 
 When you begin file analysis (with the plugin enabled), in the "Analysis Options" popup scroll to "Peripheral Registers" and specify the path to a `.json`, `.svd`, or `.rdl` file containing the definitions of the registers (or a directory/archive to load multiple files).
 
-Additional help can be found under *Help > Contents > Ghidra Functionality > Peripheral Registers* and in the [Documentation](docs/source/index.md).
+Additional help can be found under "Help > Contents > Ghidra Functionality > Peripheral Registers" and in the [Documentation](docs/source/index.md).
 
 ## Testing
 
