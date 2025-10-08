@@ -18,7 +18,6 @@ package com.antmicro.girdl;
 import com.antmicro.girdl.model.type.Adapter;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
-import com.antmicro.girdl.model.type.BitsNode;
 import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.model.type.IntegerEnumNode;
 import com.antmicro.girdl.model.type.PointerNode;
@@ -60,28 +59,6 @@ public class GhidraTypeAdapter implements Adapter<DataType> {
 
 		// otherwise use whatever fits
 		return new ArrayDataType(StructConverter.BYTE, bytes);
-	}
-
-	@Override
-	public DataType adaptBits(BitsNode type) {
-		DataType underlying = type.underlying.adapt(this);
-
-		if (!type.fields.isEmpty()) {
-			try {
-				StructureDataType struct = new StructureDataType("bitfield" + type.fields.size(), 0);
-				struct.setPackingEnabled(true);
-
-				for (BitsNode.Entry field : type.fields) {
-					struct.addBitField(underlying, field.bits, field.name, field.description);
-				}
-
-				return struct;
-			} catch (Exception e) {
-				Msg.error(this, e);
-			}
-		}
-
-		return underlying;
 	}
 
 	@Override

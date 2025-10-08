@@ -19,7 +19,6 @@ public interface Adapter<T> {
 
 	T adaptArray(ArrayNode type);
 	T adaptBase(BaseNode type);
-	T adaptBits(BitsNode type);
 	T adaptStruct(StructNode type);
 	T adaptTypedef(TypedefNode type);
 	T adaptPointer(PointerNode type);

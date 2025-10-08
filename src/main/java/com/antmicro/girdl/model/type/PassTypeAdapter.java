@@ -34,11 +34,6 @@ public final class PassTypeAdapter implements Adapter<TypeNode> {
 	}
 
 	@Override
-	public TypeNode adaptBits(BitsNode type) {
-		return type;
-	}
-
-	@Override
 	public TypeNode adaptStruct(StructNode type) {
 		return type;
 	}

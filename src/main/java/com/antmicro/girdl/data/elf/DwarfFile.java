@@ -29,7 +29,6 @@ import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
 import com.antmicro.girdl.model.Peripheral;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
-import com.antmicro.girdl.model.type.BitsNode;
 import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.model.type.IntegerEnumNode;
 import com.antmicro.girdl.model.type.PassTypeAdapter;
@@ -232,7 +231,6 @@ public class DwarfFile extends ElfFile {
 		return switch (type) {
 			case BaseNode node -> fromBaseNode(node, dies);
 			case ArrayNode node -> fromArrayNode(node, dies);
-			case BitsNode node -> fromBitsNode(node, dies);
 			case UnionNode node -> fromStructNode(node, union, dies);
 			case StructNode node -> fromStructNode(node, node.isAnonymous() ? anonymous : structure, dies);
 			case TypedefNode node -> fromTypedefNode(node, dies);
@@ -272,48 +270,6 @@ public class DwarfFile extends ElfFile {
 		buffer.putShort(type.size(bytes));
 
 		subrange.create(buffer).putShort(type.length);
-
-		buffer.putByte(0);
-
-		types.put(type, buffer);
-		return buffer;
-	}
-
-	private DataWriter fromBitsNode(BitsNode type, SegmentedBuffer dies) {
-		int bytes = type.underlying.bytes;
-
-		// this is ok to do first, s it won't ever form a loop
-		DataWriter field = integral.getOrCompute(() -> createType(BaseNode.of(8), dies));
-
-		SegmentedBuffer buffer = anonymous.create(dies);
-		buffer.putShort(bytes);
-
-		int offset = 0;
-
-		for (BitsNode.Entry entry : type.fields) {
-
-			bitfield.create(buffer)
-					.putString(entry.name)
-					.putShort(offset)
-					.putShort(entry.bits)
-					.putInt(() -> field.offset() - info.offset());
-
-			offset += entry.bits;
-
-		}
-
-		final int remaining = bytes * 8 - offset;
-
-		// make sure our bitfield isn't too small
-		if (remaining > 0) {
-
-			bitfield.create(buffer)
-					.putString("unspecified")
-					.putShort(offset)
-					.putShort(remaining)
-					.putInt(() -> field.offset() - info.offset());
-
-		}
 
 		buffer.putByte(0);
 
