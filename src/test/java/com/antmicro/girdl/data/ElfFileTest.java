@@ -2,6 +2,7 @@ package com.antmicro.girdl.data;
 
 import com.antmicro.girdl.data.elf.DwarfFile;
 import com.antmicro.girdl.data.elf.ElfFile;
+import com.antmicro.girdl.data.elf.LineProgrammer;
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
 import com.antmicro.girdl.data.elf.enums.ElfSectionFlag;
 import com.antmicro.girdl.data.elf.enums.ElfSectionType;
@@ -370,6 +371,55 @@ public class ElfFileTest {
 				    uint16_t c;
 				}
 				"""));
+
+	}
+
+	@Test
+	void testDwarfLineProgrammer() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			LineProgrammer programmer = dwarf.createLineProgram();
+
+			int dir = programmer.addDirectory("./");
+			programmer.setFile(dir, "test.cpp");
+
+			// nops
+			programmer.advanceLine(0);
+			programmer.advanceAddress(0);
+
+			programmer.setColumn(42);
+			programmer.advanceLine(55);
+			programmer.advanceAddress(37);
+			programmer.advanceLine(-10);
+
+			Assertions.assertThrows(RuntimeException.class, () -> {
+				programmer.advanceAddress(-10);
+			});
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String sections = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(sections.contains("""
+				The Directory Table (offset 0x22, lines 1, columns 1):
+				  Entry\tName
+				  0\t./
+				
+				 The File Name Table (offset 0x2b, lines 1, columns 2):
+				  Entry\tDir\tName
+				  0\t0\ttest.cpp
+				
+				 Line Number Statements:
+				  [0x00000035]  Set File Name to entry 0 in the File Name Table
+				  [0x00000037]  Set column to 42
+				  [0x00000039]  Advance Line by 55 to 56
+				  [0x0000003b]  Advance PC by 37 to 0x25
+				  [0x0000003d]  Advance Line by -10 to 46"""));
 
 	}
 

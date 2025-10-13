@@ -241,7 +241,7 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 	}
 
 	/**
-	 * Wrtie an integer of width specified using the bits parameter,
+	 * Write an integer of width specified using the bits parameter,
 	 * supported values include 8, 16, 32, 64.
 	 *
 	 * @param bits Number of bts to use

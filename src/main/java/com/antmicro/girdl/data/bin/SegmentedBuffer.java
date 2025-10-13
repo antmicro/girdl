@@ -179,6 +179,11 @@ public final class SegmentedBuffer extends DataWriter {
 		return builder.toString();
 	}
 
+	public SegmentedBuffer erase() {
+		blocks.clear();
+		return this;
+	}
+
 	public SegmentedBuffer putSegment(ByteOrder order) {
 		SegmentedBuffer segmented = new SegmentedBuffer(this, order);
 		segmented.assertContentPolicy(policy);

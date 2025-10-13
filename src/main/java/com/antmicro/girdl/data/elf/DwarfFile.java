@@ -48,6 +48,7 @@ public class DwarfFile extends ElfFile {
 	public static final int DWARF_VERSION = 5;
 
 	private int index = 1;
+	private LineProgrammer programmer = null;
 
 	private final SegmentedBuffer info;
 	private final SegmentedBuffer dies;
@@ -186,6 +187,14 @@ public class DwarfFile extends ElfFile {
 				.putByte(1)
 				.putString("peripherals");
 
+	}
+
+	public LineProgrammer createLineProgram() {
+		if (programmer == null) {
+			programmer = new LineProgrammer(createSection(".debug_line", ElfSectionType.PROGBITS, ElfSectionFlag.NONE, 1, 0, null), getAddressWidth());
+		}
+
+		return programmer;
 	}
 
 	public void createPeripheral(Peripheral peripheral, long offset) {
