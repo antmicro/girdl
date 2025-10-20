@@ -110,8 +110,8 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 	/**
 	 * Based on <a href="https://android.googlesource.com/platform/libcore/+/522b917/dex/src/main/java/com/android/dex/Leb128.java">Google's Implementation</a>.
 	 */
-	public final DataWriter putSignedLeb128(int value) {
-		int remaining = value >> 7;
+	public final DataWriter putSignedLeb128(long value) {
+		long remaining = value >> 7;
 		boolean hasNext = true;
 		int end = ((value & Integer.MIN_VALUE) == 0) ? 0 : -1;
 
@@ -129,8 +129,8 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 	/**
 	 * Based on <a href="https://android.googlesource.com/platform/libcore/+/522b917/dex/src/main/java/com/android/dex/Leb128.java">Google's Implementation</a>.
 	 */
-	public final DataWriter putUnsignedLeb128(int value) {
-		int remaining = value >>> 7;
+	public final DataWriter putUnsignedLeb128(long value) {
+		long remaining = value >>> 7;
 
 		while (remaining != 0) {
 			putByte((value & 0x7f) | 0x80);
@@ -139,6 +139,11 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 		}
 
 		putByte(value & 0x7f);
+		return this;
+	}
+
+	public DataWriter putByte(long value) {
+		putByte(Math.toIntExact(value));
 		return this;
 	}
 

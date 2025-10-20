@@ -17,6 +17,7 @@ package com.antmicro.girdl.data.elf.enums;
 
 public class DwarfLine {
 
+	// standard opcodes
 	public static final int COPY = 0x01;
 	public static final int ADVANCE_PC = 0x02;
 	public static final int ADVANCE_LINE = 0x03;
@@ -29,5 +30,10 @@ public class DwarfLine {
 	public static final int SET_PROLOGUE_END = 0x0a;
 	public static final int SET_EPILOGUE_BEGIN = 0x0b;
 	public static final int SET_ISA = 0x0c;
+
+	// extended opcodes
+	public static final int EXT_BEGIN = 0x00;
+	public static final int EXT_END_SEQUENCE = 0x01;
+	public static final int EXT_SET_ADDRESS = 0x02;
 
 }

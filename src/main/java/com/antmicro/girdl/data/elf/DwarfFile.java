@@ -37,7 +37,6 @@ import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.model.type.TypedefNode;
 import com.antmicro.girdl.model.type.UnionNode;
-import com.antmicro.girdl.util.Lazy;
 
 import java.io.File;
 import java.util.HashMap;
@@ -77,11 +76,11 @@ public class DwarfFile extends ElfFile {
 	private final Template function;
 	private final Template parameter;
 
-	// type used for bitfield fields
-	private final Lazy<DataWriter> integral = new Lazy<>();
-
 	public DwarfFile(File file, /* ElfMachine */ int machine, int bits) {
 		super(file, machine);
+
+		File parent = file.getParentFile();
+		String directory = parent == null ? new File("./").getAbsolutePath() : parent.getAbsolutePath();
 
 		this.bits = bits;
 		this.bytes = bits / 8;
@@ -111,7 +110,9 @@ public class DwarfFile extends ElfFile {
 		unit = createTemplate(DwarfTag.COMPILE_UNIT, true)
 				.add(DwarfAttr.PRODUCER, DwarfForm.STRING)
 				.add(DwarfAttr.LANGUAGE, DwarfForm.DATA1)
-				.add(DwarfAttr.NAME, DwarfForm.STRING);
+				.add(DwarfAttr.NAME, DwarfForm.STRING)
+				.add(DwarfAttr.COMP_DIR, DwarfForm.STRING)
+				.add(DwarfAttr.STMT_LIST, DwarfForm.DATA8);
 
 		structure = createTemplate(DwarfTag.STRUCTURE_TYPE, true)
 				.add(DwarfAttr.NAME, DwarfForm.STRING)
@@ -185,7 +186,9 @@ public class DwarfFile extends ElfFile {
 		unit.create(dies)
 				.putString("girdl")
 				.putByte(1)
-				.putString("peripherals");
+				.putString(file.getName() + ".c")
+				.putString(directory) // compile directory
+				.putLong(0); // offset into the lines table
 
 	}
 

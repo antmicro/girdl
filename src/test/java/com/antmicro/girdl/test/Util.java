@@ -32,12 +32,12 @@ import java.util.stream.Collectors;
 public final class Util {
 
 	public static File createTempFile(String suffix) {
-		return createTempFile("renode-test-", suffix);
+		return createTempFile("girdl-test-", suffix);
 	}
 
 	public static File createTempFile(String prefix, String suffix) {
 		try {
-			File file = File.createTempFile(prefix, "-renode-test" + suffix);
+			File file = File.createTempFile(prefix, "-girdl-test" + suffix);
 			file.deleteOnExit();
 
 			return file;

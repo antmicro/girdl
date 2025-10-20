@@ -104,7 +104,7 @@ public class ElfFileTest {
 
 		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
 		Assertions.assertTrue(debug.contains("DW_AT_producer    : girdl"));
-		Assertions.assertTrue(debug.contains("DW_AT_name        : peripherals"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : " + temp.getName() + ".c"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : uint64_t"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : first"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : second"));
@@ -220,9 +220,9 @@ public class ElfFileTest {
 		Assertions.assertTrue(debugger.contains("""
 				(gdb) All defined types:
 				
-				File peripherals:
+				File %s:
 					typedef named_4_bytes another;
-					named_4_bytes"""));
+					named_4_bytes""".formatted(temp.getName() + ".c")));
 
 	}
 
@@ -250,9 +250,9 @@ public class ElfFileTest {
 		Assertions.assertTrue(debugger.contains("""
 				(gdb) All defined types:
 				
-				File peripherals:
+				File %s:
 					named_4_bytes
-					typedef named_4_bytes * ptr;"""));
+					typedef named_4_bytes * ptr;""".formatted(temp.getName() + ".c")));
 
 	}
 
@@ -325,9 +325,9 @@ public class ElfFileTest {
 		Assertions.assertTrue(functions.contains("""
 				(gdb) All defined functions:
 				
-				File peripherals:
+				File %s:
 					static int foo(int, long, long);
-				"""));
+				""".formatted(temp.getName() + ".c")));
 
 		String symbol = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\ninfo address foo").output();
 		Assertions.assertTrue(symbol.contains("(gdb) Symbol \"foo\" is a function at address 0xf032."));
@@ -378,7 +378,6 @@ public class ElfFileTest {
 	void testDwarfLineProgrammer() {
 
 		File temp = Util.createTempFile(".dwarf");
-
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
 			LineProgrammer programmer = dwarf.createLineProgram();

@@ -24,8 +24,14 @@ import java.util.HashMap;
 
 public class LineProgrammer {
 
-	private int address = 0;
-	private int line = 1;
+	public static final int DWARF_VERSION = 5;
+
+	public static final int BYTES_PER_INSTRUCTION = 1;
+	public static final int MAX_VLIW_OPERATIONS_PER_INSTRUCTION = 1;
+	public static final int DWARF5_OPCODE_COUNT = 13;
+
+	private long address = 0;
+	private long line = 1;
 
 	private final SegmentedBuffer head;
 	private final SegmentedBuffer body;
@@ -44,21 +50,21 @@ public class LineProgrammer {
 
 		// see specification 6.2.4
 		head.putInt(() -> section.size() - 4); // length (excluding the length field itself)
-		head.putShort(5);
-		head.putByte(addressWidth); // address width
-		head.putByte(0); // segment selector size
+		head.putShort(DWARF_VERSION); // section version
+		head.putByte(addressWidth); // address (pointer) width
+		head.putByte(0); // segment selector size (if present)
 
 		SegmentedBuffer length = head.putSegment();
 		SegmentedBuffer cont = head.putSegment();
 
-		cont.putByte(1); // min bytes per instruction
-		cont.putByte(1); // operations per instruction
-		cont.putByte(1); // is statement default value
+		cont.putByte(BYTES_PER_INSTRUCTION);
+		cont.putByte(MAX_VLIW_OPERATIONS_PER_INSTRUCTION);
+		cont.putBool(true); // is_statement default value
 
-		// special opcode configuration
+		// special opcode configuration, as we don't use those we can use minimal allowed values here
 		cont.putByte(0); // line_base
 		cont.putByte(1); // line_range
-		cont.putByte(13); // opcode base
+		cont.putByte(DWARF5_OPCODE_COUNT);
 
 		// encode the standard opcode argument counts
 		for (int i = 1; i < 13; i ++) {
@@ -130,7 +136,7 @@ public class LineProgrammer {
 	/**
 	 * Add the given signed offset to the line register.
 	 */
-	public void advanceLine(int advance) {
+	public void advanceLine(long advance) {
 		if (advance == 0) {
 			return;
 		}
@@ -142,7 +148,7 @@ public class LineProgrammer {
 	/**
 	 * Add the given unsigned offset to the address register.
 	 */
-	public void advanceAddress(int advance) {
+	public void advanceAddress(long advance) {
 		if (advance == 0) {
 			return;
 		}
@@ -163,16 +169,25 @@ public class LineProgrammer {
 	}
 
 	/**
+	 * Mark the one-past-last address, marking the end of valid program addresses.
+	 */
+	public void endSequence() {
+		body.putByte(DwarfLine.EXT_BEGIN);
+		body.putUnsignedLeb128(1);
+		body.putByte(DwarfLine.EXT_END_SEQUENCE);
+	}
+
+	/**
 	 * Set the address register to a specific value.
 	 */
-	public void setAddress(int target) {
+	public void setAddress(long target) {
 		advanceAddress(target - address);
 	}
 
 	/**
 	 * Set the line register to a specific value.
 	 */
-	public void setLine(int target) {
+	public void setLine(long target) {
 		advanceLine(target - line);
 	}
 

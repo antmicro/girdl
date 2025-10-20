@@ -15,6 +15,7 @@
  */
 package com.antmicro.girdl.util;
 
+import com.antmicro.girdl.GhidraGlobalDecompiler;
 import com.antmicro.girdl.data.elf.DwarfFile;
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
 import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
@@ -49,6 +50,8 @@ import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolIterator;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
@@ -65,6 +68,15 @@ public final class DwarfExporter extends DwarfFile {
 	public static void dumpProgramDebugInfo(File dwarf, Program program, long offset) {
 		try (DwarfExporter exporter = new DwarfExporter(dwarf, program)) {
 			exporter.createDebugFromProgram(program, offset);
+
+			GhidraGlobalDecompiler decompiler = new GhidraGlobalDecompiler(program);
+			String source = decompiler.dump(exporter.createLineProgram(), offset, dwarf.getName() + ".c");
+
+			try (FileOutputStream sourceOutput = new FileOutputStream(dwarf.getAbsolutePath() + ".c")) {
+				sourceOutput.write(source.getBytes(StandardCharsets.UTF_8));
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 

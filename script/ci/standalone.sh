@@ -63,7 +63,7 @@ java -jar girdl/lib/girdl.jar -i "$DATA/FT5336.rdl" -q
 echo -e "add-symbol-file symbols.dwarf\ninfo types" | gdb | strstr "$(cat <<-EXPCT
 (gdb) All defined types:
 
-File peripherals:
+File symbols.dwarf.c:
         struct FT5336;
         uint8_t
 (gdb)
@@ -94,7 +94,7 @@ java -jar girdl/lib/girdl.jar -i "$DATA/FT5336.rdl" -q -o "output.elf"
 echo -e "add-symbol-file output.elf\ninfo types" | gdb | strstr "$(cat <<-EXPCT
 (gdb) All defined types:
 
-File peripherals:
+File output.elf.c:
         struct FT5336;
         uint8_t
 (gdb)
@@ -108,7 +108,7 @@ java -jar girdl/lib/girdl.jar -i "$DATA/STM32WL33.svd" -q > /dev/null
 echo -e "add-symbol-file symbols.dwarf\ninfo types" | gdb | strstr "$(cat <<-EXPCT
 (gdb) All defined types:
 
-File peripherals:
+File symbols.dwarf.c:
         struct ADC;
         struct AES;
         struct COMP;
@@ -154,7 +154,7 @@ java -jar girdl/lib/girdl.jar -i "$DATA/STM32WL33.svd" -q > /dev/null
 echo -e "add-symbol-file symbols.dwarf\ninfo variables" | gdb | strstr "$(cat <<-EXPCT
 (gdb) All defined variables:
 
-File peripherals:
+File symbols.dwarf.c:
         static struct ADC ADC;
         static struct AES AES;
         static struct COMP COMP;
@@ -400,7 +400,7 @@ java -jar girdl/lib/girdl.jar -i "$DATA/AmbiqApollo4_GPIO.rdl" -i "$DATA/FT5336.
 echo -e "add-symbol-file symbols.dwarf\ninfo types" | gdb | strstr "$(cat <<-EXPCT
 (gdb) All defined types:
 
-File peripherals:
+File symbols.dwarf.c:
         struct AmbiqApollo4_GPIO;
         struct FT5336;
 EXPCT
@@ -413,7 +413,7 @@ java -jar girdl/lib/girdl.jar -i "$DATA/stm32f.pmap.json" -q
 echo -e "add-symbol-file symbols.dwarf\ninfo types" | gdb | strstr "$(cat <<-EXPCT
 (gdb) All defined types:
 
-File peripherals:
+File symbols.dwarf.c:
         struct BitBanding;
         struct CortexM;
         struct MappedMemory;
@@ -444,7 +444,7 @@ java -jar girdl/lib/girdl.jar -i "$DATA/STM32F4_I2C.rdl" -i "$DATA/stm32f.pmap.j
 echo -e "add-symbol-file symbols.dwarf\ninfo variables" | gdb | strstr "$(cat <<-EXPCT
 (gdb) All defined variables:
 
-File peripherals:
+File symbols.dwarf.c:
         static struct BitBanding bitbandPeripherals;
         static struct BitBanding bitbandSram;
         static struct STMCAN can1;
