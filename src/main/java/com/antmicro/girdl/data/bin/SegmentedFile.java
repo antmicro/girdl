@@ -40,7 +40,7 @@ public class SegmentedFile implements AutoCloseable {
 
 	public SegmentedFile(File file, ByteOrder order) {
 		try {
-			this.output = new FileOutputStream(file);
+			this.output = new FileOutputStream(file, false);
 			this.buffer = new SegmentedBuffer(null, order);
 		} catch (Exception e) {
 			throw new RuntimeException("Can't open file '" + file + "'", e);

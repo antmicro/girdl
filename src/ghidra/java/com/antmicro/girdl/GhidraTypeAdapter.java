@@ -115,7 +115,7 @@ public class GhidraTypeAdapter implements Adapter<DataType> {
 		ParameterDefinition[] params = new ParameterDefinition[type.parameters.size()];
 
 		for (int i = 0; i < params.length; i ++) {
-			FunctionNode.Parameter parameter = type.parameters.get(i);
+			FunctionNode.Variable parameter = type.parameters.get(i);
 
 			params[i] = new ParameterDefinitionImpl(parameter.name, parameter.type.adapt(this), "");
 		}

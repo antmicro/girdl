@@ -37,18 +37,26 @@ import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.model.type.TypedefNode;
 import com.antmicro.girdl.model.type.UnionNode;
+import com.antmicro.girdl.util.Reflect;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class DwarfFile extends ElfFile {
 
 	public static final int DWARF_VERSION = 5;
 
-	private int index = 1;
 	private LineProgrammer programmer = null;
 
+	private int id = 1;
 	private final SegmentedBuffer info;
 	private final SegmentedBuffer dies;
 	private final SegmentedBuffer abbrev;
@@ -58,23 +66,63 @@ public class DwarfFile extends ElfFile {
 	private final int bits;
 	private final int bytes;
 
-	private final Template unit;
-	private final Template structure;
-	private final Template anonymous;
-	private final Template union;
-	private final Template member;
-	private final Template bitfield;
-	private final Template primitive;
-	private final Template array;
-	private final Template subrange;
-	private final Template variable;
-	private final Template typedef;
-	private final Template pointer;
-	private final Template enumeration;
-	private final Template enumerator;
-	private final Template procedure;
-	private final Template function;
-	private final Template parameter;
+	private final HashMap<DwarfAbbreviation, Integer> abbreviations = new HashMap<>();
+
+	class Builder {
+
+		private static final Set<Builder> HOLDERS = new HashSet<>();
+
+		private final SegmentedBuffer head;
+		private final SegmentedBuffer body;
+		private final int tag;
+		private boolean children = false;
+		private final List<DwarfAttribute> attributes = new ArrayList<>();
+
+		private Builder(SegmentedBuffer buffer, /* DwarfTag */ int tag) {
+
+			final String name = "Instance " + Reflect.constValueName(DwarfTag.class, tag);
+			head = buffer.putSegment().setName(name + " head");
+			body = buffer.putSegment().setName(name + " body");
+
+			this.tag = tag;
+
+			HOLDERS.add(this);
+		}
+
+		public Builder withChildren() {
+			this.children = true;
+			return this;
+		}
+
+		public Builder add(/* DwarfAttr */ int attribute, /* DwarfForm */ int format, Consumer<SegmentedBuffer> writer) {
+			attributes.add(new DwarfAttribute(attribute, format));
+			writer.accept(body);
+			return this;
+		}
+
+		public Builder add(/* DwarfAttr */ int attribute, /* DwarfForm */ int format, String string) {
+			return add(attribute, format, buffer -> buffer.putString(string));
+		}
+
+		/**
+		 * Create an abbreviation matching the specified layout
+		 * if it is missing or fetches the ID from cache otherwise.
+		 */
+		private int getOrCreateIdentifier() {
+			final DwarfAbbreviation abbreviation = new DwarfAbbreviation(tag, children, Collections.unmodifiableList(attributes));
+			return abbreviations.computeIfAbsent(abbreviation, template -> template.write(abbrev, id ++));
+		}
+
+		public SegmentedBuffer done() {
+			head.putUnsignedLeb128(getOrCreateIdentifier());
+			HOLDERS.remove(this);
+			return head;
+		}
+	}
+
+	private Builder create(/* DwarfTag */ int tag, SegmentedBuffer dies) {
+		return new Builder(dies, tag);
+	}
 
 	public DwarfFile(File file, /* ElfMachine */ int machine, int bits) {
 		super(file, machine);
@@ -107,88 +155,13 @@ public class DwarfFile extends ElfFile {
 		dies = info.putSegment().setName("DIEs");
 		info.putByte(0);
 
-		unit = createTemplate(DwarfTag.COMPILE_UNIT, true)
-				.add(DwarfAttr.PRODUCER, DwarfForm.STRING)
-				.add(DwarfAttr.LANGUAGE, DwarfForm.DATA1)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.COMP_DIR, DwarfForm.STRING)
-				.add(DwarfAttr.STMT_LIST, DwarfForm.DATA8);
-
-		structure = createTemplate(DwarfTag.STRUCTURE_TYPE, true)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA2);
-
-		anonymous = createTemplate(DwarfTag.STRUCTURE_TYPE, true)
-				.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA2);
-
-		union = createTemplate(DwarfTag.UNION_TYPE, true)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA2);
-
-		member = createTemplate(DwarfTag.MEMBER, false)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.DATA_MEMBER_LOCATION, DwarfForm.DATA2)
-				.add(DwarfAttr.TYPE, DwarfForm.REF4);
-
-		bitfield = createTemplate(DwarfTag.MEMBER, false)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.DATA_BIT_OFFSET, DwarfForm.DATA2)
-				.add(DwarfAttr.BIT_SIZE, DwarfForm.DATA2)
-				.add(DwarfAttr.TYPE, DwarfForm.REF4);
-
-		primitive = createTemplate(DwarfTag.BASE_TYPE, false)
-				.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA1)
-				.add(DwarfAttr.ENCODING, DwarfForm.DATA1)
-				.add(DwarfAttr.NAME, DwarfForm.STRING);
-
-		variable = createTemplate(DwarfTag.VARIABLE, false)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.TYPE, DwarfForm.REF4)
-				.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC);
-
-		array = createTemplate(DwarfTag.ARRAY_TYPE, true)
-				.add(DwarfAttr.TYPE, DwarfForm.REF4)
-				.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA2);
-
-		subrange = createTemplate(DwarfTag.SUBRANGE_TYPE, false)
-				.add(DwarfAttr.UPPER_BOUND, DwarfForm.DATA2);
-
-		typedef = createTemplate(DwarfTag.TYPEDEF, false)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.TYPE, DwarfForm.REF4);
-
-		pointer = createTemplate(DwarfTag.POINTER_TYPE, false)
-				.add(DwarfAttr.TYPE, DwarfForm.REF4);
-
-		enumeration = createTemplate(DwarfTag.ENUMERATION_TYPE, true)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.TYPE, DwarfForm.REF4);
-
-		enumerator = createTemplate(DwarfTag.ENUMERATOR, false)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8);
-
-		procedure = createTemplate(DwarfTag.SUBPROGRAM, true)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.LOW_PC, DwarfForm.DATA8)
-				.add(DwarfAttr.HIGH_PC, DwarfForm.DATA8);
-
-		function = createTemplate(DwarfTag.SUBPROGRAM, true)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.LOW_PC, DwarfForm.DATA8)
-				.add(DwarfAttr.HIGH_PC, DwarfForm.DATA8)
-				.add(DwarfAttr.TYPE, DwarfForm.REF4);
-
-		parameter = createTemplate(DwarfTag.FORMAL_PARAMETER, false)
-				.add(DwarfAttr.NAME, DwarfForm.STRING)
-				.add(DwarfAttr.TYPE, DwarfForm.REF4);
-
-		unit.create(dies)
-				.putString("girdl")
-				.putByte(1)
-				.putString(file.getName() + ".c")
-				.putString(directory) // compile directory
-				.putLong(0); // offset into the lines table
+		create(DwarfTag.COMPILE_UNIT, dies).withChildren()
+				.add(DwarfAttr.PRODUCER, DwarfForm.STRING, "girdl")
+				.add(DwarfAttr.LANGUAGE, DwarfForm.DATA1, buffer -> buffer.putByte(1))
+				.add(DwarfAttr.NAME, DwarfForm.STRING, file.getName() + ".c")
+				.add(DwarfAttr.COMP_DIR, DwarfForm.STRING, directory)
+				.add(DwarfAttr.STMT_LIST, DwarfForm.DATA8, buffer -> buffer.putLong(0))
+				.done();
 
 	}
 
@@ -212,16 +185,19 @@ public class DwarfFile extends ElfFile {
 	public void createVariable(TypeNode node, String name, long address) {
 		DataWriter type = createType(node, dies);
 
-		SegmentedBuffer buffer = variable.create(dies);
-		buffer.putString(name).putInt(() -> type.offset() - info.offset());
-
 		createSymbol(name, address, node.size(bytes), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
 
-		SegmentedBuffer head = buffer.putSegment();
-		SegmentedBuffer body = buffer.putSegment();
+		create(DwarfTag.VARIABLE, dies)
+				.add(DwarfAttr.NAME, DwarfForm.STRING, name)
+				.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> type.from(info)))
+				.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC, expr -> {
+					SegmentedBuffer head = expr.putSegment();
+					SegmentedBuffer body = expr.putSegment();
 
-		body.putByte(DwarfOp.ADDR).putDynamic(bits, address);
-		head.putUnsignedLeb128(body.size()); // not linked!
+					body.putByte(DwarfOp.ADDR).putDynamic(bits, address);
+					head.putUnsignedLeb128(body.size()); // not linked!
+				})
+				.done();
 	}
 
 	public void createType(TypeNode type) {
@@ -243,8 +219,8 @@ public class DwarfFile extends ElfFile {
 		return switch (type) {
 			case BaseNode node -> fromBaseNode(node, dies);
 			case ArrayNode node -> fromArrayNode(node, dies);
-			case UnionNode node -> fromStructNode(node, union, dies);
-			case StructNode node -> fromStructNode(node, node.isAnonymous() ? anonymous : structure, dies);
+			case UnionNode node -> fromStructNode(node, DwarfTag.UNION_TYPE, dies);
+			case StructNode node -> fromStructNode(node, DwarfTag.STRUCTURE_TYPE, dies);
 			case TypedefNode node -> fromTypedefNode(node, dies);
 			case PointerNode node -> fromPointerNode(node, dies);
 			case IntegerEnumNode node -> fromIntegerEnumNode(node, dies);
@@ -254,44 +230,41 @@ public class DwarfFile extends ElfFile {
 		};
 	}
 
-	private SegmentedBuffer beginType(TypeNode type, Template template, SegmentedBuffer dies) {
-		SegmentedBuffer buffer = template.create(dies);
-		types.put(type, buffer);
+	private Builder beginType(TypeNode type, /* DwarfTag */ int tag, SegmentedBuffer dies) {
+		Builder builder = create(tag, dies);
+		types.put(type, builder.head);
 
-		return buffer;
+		return builder;
 	}
 
 	private DataWriter fromBaseNode(BaseNode type, SegmentedBuffer dies) {
-		DataWriter buffer = beginType(type, primitive, dies);
-
-		buffer.putByte(type.bytes);
-		buffer.putByte(DwarfEncoding.UNSIGNED);
-		buffer.putString(type.toString());
-
-		return buffer;
+		return beginType(type, DwarfTag.BASE_TYPE, dies)
+				.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA1, buffer -> buffer.putByte(type.bytes))
+				.add(DwarfAttr.ENCODING, DwarfForm.DATA1, buffer -> buffer.putByte(DwarfEncoding.UNSIGNED))
+				.add(DwarfAttr.NAME, DwarfForm.STRING, type.toString())
+				.done();
 	}
 
 	private DataWriter fromArrayNode(ArrayNode type, SegmentedBuffer dies) {
-		SegmentedBuffer before = dies.putSegment();
-		SegmentedBuffer buffer = beginType(type, array, dies);
+		final SegmentedBuffer before = dies.putSegment();
+		final DataWriter element = createType(type.element, before);
 
-		// dependencies
-		DataWriter element = createType(type.element, before);
+		SegmentedBuffer array = beginType(type, DwarfTag.ARRAY_TYPE, dies).withChildren()
+				.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> element.from(info)))
+				.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA2, buffer -> buffer.putShort(type.size(bytes)))
+				.done();
 
-		buffer.putInt(() -> element.offset() - info.offset());
-		buffer.putShort(type.size(bytes));
+		create(DwarfTag.SUBRANGE_TYPE, dies)
+				.add(DwarfAttr.UPPER_BOUND, DwarfForm.DATA2, buffer -> buffer.putShort(type.length))
+				.done();
 
-		subrange.create(buffer).putShort(type.length);
-
-		buffer.putByte(0);
-
-		types.put(type, buffer);
-		return buffer;
+		dies.putByte(0);
+		return array;
 	}
 
-	private DataWriter fromStructNode(StructNode type, Template template, SegmentedBuffer dies) {
+	private DataWriter fromStructNode(StructNode type, /* DwarfTag */ int tag, SegmentedBuffer dies) {
 		SegmentedBuffer before = dies.putSegment();
-		SegmentedBuffer buffer = beginType(type, template, dies);
+		Builder builder = beginType(type, tag, dies).withChildren();
 
 		for (StructNode.Entry entry : type.fields) {
 			createType(entry.type, before);
@@ -304,14 +277,17 @@ public class DwarfFile extends ElfFile {
 		}
 
 		if (!type.isAnonymous()) {
-			buffer.putString(type.name);
+			builder.add(DwarfAttr.NAME, DwarfForm.STRING, type.name);
 		}
 
-		buffer.putShort(type.size(bytes));
+		builder.add(DwarfAttr.BYTE_SIZE, DwarfForm.DATA2, buffer -> buffer.putShort(type.size(bytes)));
+		SegmentedBuffer inner = builder.done();
 
 		int offset = 0;
 
 		for (StructNode.Entry entry : type.fields) {
+
+			final int current = offset;
 
 			// reference types we already pre-cached before
 			DataWriter typeBuffer = types.get(entry.type);
@@ -321,20 +297,23 @@ public class DwarfFile extends ElfFile {
 			}
 
 			if (entry.isBitField()) {
-				bitfield.create(buffer)
-						.putString(entry.name)
-						.putShort(offset)
-						.putShort(entry.bits)
-						.putInt(() -> typeBuffer.offset() - info.offset());
+
+				create(DwarfTag.MEMBER, dies)
+						.add(DwarfAttr.NAME, DwarfForm.STRING, entry.name)
+						.add(DwarfAttr.DATA_BIT_OFFSET, DwarfForm.DATA2, buffer -> buffer.putShort(current))
+						.add(DwarfAttr.BIT_SIZE, DwarfForm.DATA2, buffer -> buffer.putShort(entry.bits))
+						.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> typeBuffer.from(info)))
+						.done();
 
 				offset += entry.bits;
 				continue;
 			}
 
-			member.create(buffer)
-					.putString(entry.name)
-					.putShort(offset / 8)
-					.putInt(() -> typeBuffer.offset() - info.offset());
+			create(DwarfTag.MEMBER, dies)
+					.add(DwarfAttr.NAME, DwarfForm.STRING, entry.name)
+					.add(DwarfAttr.DATA_MEMBER_LOCATION, DwarfForm.DATA2, buffer -> buffer.putShort(current / 8))
+					.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> typeBuffer.from(info)))
+					.done();
 
 			// keep the offset in bits
 			offset += entry.type.size(bytes) * 8;
@@ -350,139 +329,120 @@ public class DwarfFile extends ElfFile {
 				// reference types we already pre-cached before
 				DataWriter field = types.get(BaseNode.BITS);
 
-				bitfield.create(buffer)
-						.putString("padding")
-						.putShort(offset)
-						.putShort(remaining)
-						.putInt(() -> field.offset() - info.offset());
+				final int current = offset;
 
+				create(DwarfTag.MEMBER, dies)
+						.add(DwarfAttr.NAME, DwarfForm.STRING, "padding")
+						.add(DwarfAttr.DATA_BIT_OFFSET, DwarfForm.DATA2, buffer -> buffer.putShort(current))
+						.add(DwarfAttr.BIT_SIZE, DwarfForm.DATA2, buffer -> buffer.putShort(remaining))
+						.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> field.from(info)))
+						.done();
 			}
 
 		}
 
-		buffer.putByte(0);
-
-		return buffer;
+		dies.putByte(0);
+		return inner;
 	}
 
 	private DataWriter fromTypedefNode(TypedefNode type, SegmentedBuffer dies) {
 		SegmentedBuffer before = dies.putSegment();
-		SegmentedBuffer buffer = beginType(type, typedef, dies);
 
-		DataWriter underlying = createType(type.underlying, before);
+		final Builder builder = beginType(type, DwarfTag.TYPEDEF, dies);
+		final DataWriter underlying = createType(type.underlying, before);
 
-		buffer.putString(type.name);
-		buffer.putInt(() -> underlying.offset() - info.offset());
+		builder.add(DwarfAttr.NAME, DwarfForm.STRING, type.name);
+		builder.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> underlying.from(info)));
 
-		return buffer;
+		return builder.done();
 	}
 
 	private DataWriter fromPointerNode(PointerNode type, SegmentedBuffer dies) {
 		SegmentedBuffer before = dies.putSegment();
-		SegmentedBuffer buffer = beginType(type, pointer, dies);
 
-		DataWriter underlying = createType(type.reference, before);
+		final Builder builder = beginType(type, DwarfTag.POINTER_TYPE, dies);
+		final DataWriter underlying = createType(type.reference, before);
 
-		buffer.putInt(() -> underlying.offset() - info.offset());
+		builder.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> underlying.from(info)));
 
-		return buffer;
+		return builder.done();
 	}
 
 	private DataWriter fromIntegerEnumNode(IntegerEnumNode type, SegmentedBuffer dies) {
 		DataWriter underlying = createType(type.underlying, dies);
 
 		// integer enums are based on BaseNodes, so it's fine if we first resolve before creating the node
-		SegmentedBuffer buffer = enumeration.create(dies);
-		buffer.putString(type.name);
-		buffer.putInt(() -> underlying.offset() - info.offset());
+		SegmentedBuffer inner = beginType(type, DwarfTag.ENUMERATION_TYPE, dies).withChildren()
+				.add(DwarfAttr.NAME, DwarfForm.STRING, type.name)
+				.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> underlying.from(info)))
+				.done();
 
 		for (IntegerEnumNode.Enumerator entry : type.enumerators) {
 
-			enumerator.create(buffer)
-					.putString(entry.name)
-					.putLong(entry.value);
+			create(DwarfTag.ENUMERATOR, dies)
+					.add(DwarfAttr.NAME, DwarfForm.STRING, entry.name)
+					.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8, buffer -> buffer.putLong(entry.value))
+					.done();
 
 		}
 
-		buffer.putByte(0);
-
-		types.put(type, buffer);
-		return buffer;
+		dies.putByte(0);
+		return inner;
 	}
 
 	private DataWriter fromFunctionNode(FunctionNode type, SegmentedBuffer dies) {
 		SegmentedBuffer before = dies.putSegment();
-		SegmentedBuffer buffer = beginType(type, type.result == null ? procedure : function, dies);
+		Builder builder = beginType(type, DwarfTag.SUBPROGRAM, dies).withChildren();
 
 		DataWriter returnType =  createType(type.result, before);
 
-		for (FunctionNode.Parameter entry : type.parameters) {
+		for (FunctionNode.Variable entry : type.parameters) {
 			createType(entry.type, dies);
 		}
 
-		buffer.putString(type.name);
-		buffer.putLong(type.low);
-		buffer.putLong(type.high);
+		builder.add(DwarfAttr.NAME, DwarfForm.STRING, type.name);
+		builder.add(DwarfAttr.LOW_PC, DwarfForm.DATA8, buffer -> buffer.putLong(type.low));
+		builder.add(DwarfAttr.HIGH_PC, DwarfForm.DATA8, buffer -> buffer.putLong(type.high));
 
 		if (returnType != null) {
-			buffer.putInt(() -> returnType.offset() - info.offset());
+			builder.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> returnType.from(info)));
 		}
 
-		for (FunctionNode.Parameter entry : type.parameters) {
+		SegmentedBuffer inner = builder.done();
+
+		for (FunctionNode.Variable entry : type.parameters) {
 
 			DataWriter parameterBuffer = createType(entry.type, dies);
 
-			parameter.create(buffer)
-					.putString(entry.name)
-					.putInt(() -> parameterBuffer.offset() - info.offset());
+			create(DwarfTag.FORMAL_PARAMETER, dies)
+					.add(DwarfAttr.NAME, DwarfForm.STRING, entry.name)
+					.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> parameterBuffer.from(info)))
+					.done();
 
 		}
 
-		buffer.putByte(0);
-		return buffer;
-	}
-
-	protected Template createTemplate(/* DwarfTag */ int tag, boolean hasChildren) {
-		SegmentedBuffer buffer = abbrev.putSegment().setName("Abbreviation #" + index);
-		abbrev.putShort(0); // terminate this abbreviation
-
-		final int type = index;
-		index ++;
-
-		buffer.putUnsignedLeb128(type);
-		buffer.putByte(tag);
-		buffer.putBool(hasChildren);
-
-		return new Template(buffer, type);
+		dies.putByte(0);
+		return inner;
 	}
 
 	public int getAddressWidth() {
 		return bytes;
 	}
 
-	protected static class Template {
+	private void assertNoHolders() {
+		if (!Builder.HOLDERS.isEmpty()) {
+			final String issues = Builder.HOLDERS.stream()
+					.mapToInt(builder -> builder.tag).distinct()
+					.mapToObj(tag -> Reflect.constValueName(DwarfTag.class, tag))
+					.collect(Collectors.joining(", "));
 
-		final SegmentedBuffer buffer;
-		final int index;
-
-		Template(SegmentedBuffer buffer, int index) {
-			this.buffer = buffer;
-			this.index = index;
+			throw new RuntimeException("Some intrusive holders were not yet done building, did you forget to call Builder#done()? In reference to DWARF tags: " + issues);
 		}
-
-		Template add(/* DwarfAttr */ int attribute, /* DwarfForm */ int format) {
-			buffer.putByte(attribute);
-			buffer.putByte(format);
-
-			return this;
-		}
-
-		SegmentedBuffer create(SegmentedBuffer parent) {
-			SegmentedBuffer buffer = parent.putSegment().setName("Instance #" + index);
-			buffer.putUnsignedLeb128(index);
-			return buffer;
-		}
-
 	}
 
+	@Override
+	public void close() {
+		assertNoHolders();
+		super.close();
+	}
 }

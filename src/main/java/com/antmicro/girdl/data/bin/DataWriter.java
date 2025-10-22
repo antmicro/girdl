@@ -93,6 +93,17 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 	}
 
 	/**
+	 * Offset, in bytes, of this buffer in relation to the other buffer,
+	 * this value will change as data is being appended between the
+	 * two buffers.
+	 *
+	 * @return Offset in bytes.
+	 */
+	public int from(DataWriter writer) {
+		return offset() - writer.offset();
+	}
+
+	/**
 	 * Fill the buffer with the given byte, until a specific length is reached. If
 	 * the buffer is already of that length or longer not bytes will be appended.
 	 *

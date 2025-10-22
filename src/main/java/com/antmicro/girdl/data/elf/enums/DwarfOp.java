@@ -61,6 +61,8 @@ public class DwarfOp {
 	public static final int NE = 0x2e; // 0 ops
 	public static final int SKIP = 0x2f; // 1 op, signed 2-byte constant
 
+	public static final int REG0 = 0x50; // 0 ops
+	public static final int BREG0 = 0x70; // 1 op, SLEB128 offset
 	public static final int REGX = 0x90; // 1 op, ULEB128 register
 	public static final int FBREG = 0x91; // 1 op, SLEB128 offset
 	public static final int BREGX = 0x92; // 2 ops, ULEB128 register, SLEB128 offset

@@ -17,6 +17,7 @@ package com.antmicro.girdl.util;
 
 import com.antmicro.girdl.GhidraGlobalDecompiler;
 import com.antmicro.girdl.data.elf.DwarfFile;
+import com.antmicro.girdl.data.elf.Storage;
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
 import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
 import com.antmicro.girdl.model.type.ArrayNode;
@@ -173,7 +174,8 @@ public final class DwarfExporter extends DwarfFile {
 				}
 
 				for (ParameterDefinition parameter : function.getArguments()) {
-					node.addParameter(parameter.getName(), adaptToTypeNode(parameter.getDataType(), mapper, nodes));
+					TypeNode varType = adaptToTypeNode(parameter.getDataType(), mapper, nodes);
+					node.addParameter(parameter.getName(), varType, Storage.ofUnknown(varType.size(getAddressWidth())));
 				}
 
 				return node;

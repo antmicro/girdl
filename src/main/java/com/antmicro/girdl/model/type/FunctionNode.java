@@ -15,6 +15,9 @@
  */
 package com.antmicro.girdl.model.type;
 
+import com.antmicro.girdl.data.elf.Storage;
+import com.antmicro.girdl.util.Functional;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -24,7 +27,8 @@ public class FunctionNode extends TypeNode {
 	/// Return value, null if the function doesn't return.
 	public TypeNode result;
 	public final String name;
-	public final List<Parameter> parameters = new ArrayList<>();
+	public final List<Variable> parameters = new ArrayList<>();
+	public final List<Variable> locals = new ArrayList<>();
 
 	public long low = 0;
 	public long high = 0;
@@ -43,8 +47,16 @@ public class FunctionNode extends TypeNode {
 		this.high = high;
 	}
 
+	public List<Variable> getStoredVariables() {
+		return Functional.mergedList(parameters, locals).stream().filter(var -> var.storage.isKnown()).toList();
+	}
+
 	public void addParameter(String name, TypeNode type) {
-		parameters.add(new Parameter(name, type));
+		parameters.add(new Variable(name, type, Storage.ofUnknown(type.size(4))));
+	}
+
+	public void addParameter(String name, TypeNode type, Storage storage) {
+		parameters.add(new Variable(name, type, storage));
 	}
 
 	@Override
@@ -77,14 +89,16 @@ public class FunctionNode extends TypeNode {
 		return result == null;
 	}
 
-	public static class Parameter {
+	public static class Variable {
 
 		public final String name;
 		public final TypeNode type;
+		public final Storage storage;
 
-		public Parameter(String s, TypeNode type) {
-			this.name = s;
+		public Variable(String name, TypeNode type, Storage storage) {
+			this.name = name;
 			this.type = type;
+			this.storage = storage;
 		}
 
 		@Override
@@ -96,7 +110,7 @@ public class FunctionNode extends TypeNode {
 		public boolean equals(Object object) {
 			if (object == this) return true;
 
-			if (object instanceof Parameter other) {
+			if (object instanceof Variable other) {
 				return other.name.equals(name) && other.type.equals(type);
 			}
 
