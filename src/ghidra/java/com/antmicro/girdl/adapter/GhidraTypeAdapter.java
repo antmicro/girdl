@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl;
+package com.antmicro.girdl.adapter;
 
 import com.antmicro.girdl.model.type.Adapter;
 import com.antmicro.girdl.model.type.ArrayNode;
@@ -36,6 +36,8 @@ import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.TypedefDataType;
 import ghidra.program.model.data.UnionDataType;
 import ghidra.util.Msg;
+
+import java.util.List;
 
 public class GhidraTypeAdapter implements Adapter<DataType> {
 
@@ -112,10 +114,11 @@ public class GhidraTypeAdapter implements Adapter<DataType> {
 			function.setReturnType(type.result.adapt(this));
 		}
 
-		ParameterDefinition[] params = new ParameterDefinition[type.parameters.size()];
+		List<FunctionNode.Variable> parameters = type.variables.stream().filter(v -> v.parameter).toList();
+		ParameterDefinition[] params = new ParameterDefinition[parameters.size()];
 
 		for (int i = 0; i < params.length; i ++) {
-			FunctionNode.Variable parameter = type.parameters.get(i);
+			FunctionNode.Variable parameter = parameters.get(i);
 
 			params[i] = new ParameterDefinitionImpl(parameter.name, parameter.type.adapt(this), "");
 		}

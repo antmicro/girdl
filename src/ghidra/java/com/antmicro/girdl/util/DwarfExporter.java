@@ -16,36 +16,19 @@
 package com.antmicro.girdl.util;
 
 import com.antmicro.girdl.GhidraGlobalDecompiler;
+import com.antmicro.girdl.adapter.GirdlTypeAdapter;
 import com.antmicro.girdl.data.elf.DwarfFile;
-import com.antmicro.girdl.data.elf.Storage;
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
 import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
-import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.FunctionNode;
-import com.antmicro.girdl.model.type.IntegerEnumNode;
-import com.antmicro.girdl.model.type.PointerNode;
-import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
-import com.antmicro.girdl.model.type.UnionNode;
 import com.antmicro.girdl.util.log.Logger;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.Array;
-import ghidra.program.model.data.BitFieldDataType;
-import ghidra.program.model.data.BuiltIn;
 import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypeComponent;
-import ghidra.program.model.data.DefaultDataType;
-import ghidra.program.model.data.Enum;
-import ghidra.program.model.data.ParameterDefinition;
-import ghidra.program.model.data.Pointer;
-import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.TypeDef;
 import ghidra.program.model.data.Undefined;
-import ghidra.program.model.data.Union;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.FunctionIterator;
-import ghidra.program.model.listing.FunctionSignature;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolIterator;
@@ -53,10 +36,7 @@ import ghidra.program.model.symbol.SymbolIterator;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -68,10 +48,12 @@ public final class DwarfExporter extends DwarfFile {
 
 	public static void dumpProgramDebugInfo(File dwarf, Program program, long offset) {
 		try (DwarfExporter exporter = new DwarfExporter(dwarf, program)) {
-			exporter.createDebugFromProgram(program, offset);
+			GirdlTypeAdapter adapter = new GirdlTypeAdapter();
 
 			GhidraGlobalDecompiler decompiler = new GhidraGlobalDecompiler(program);
-			String source = decompiler.dump(exporter.createLineProgram(), offset, dwarf.getName() + ".c");
+			String source = decompiler.dump(exporter.createLineProgram(), offset, dwarf.getName() + ".c", adapter);
+
+			exporter.createDebugFromProgram(program, offset, decompiler, adapter);
 
 			try (FileOutputStream sourceOutput = new FileOutputStream(dwarf.getAbsolutePath() + ".c")) {
 				sourceOutput.write(source.getBytes(StandardCharsets.UTF_8));
@@ -81,138 +63,29 @@ public final class DwarfExporter extends DwarfFile {
 		}
 	}
 
-	private TypeNode adaptToTypeNode(Object type, NameMapper mapper, Map<Object, TypeNode> nodes) {
+	private static TypeNode getTypeFromData(Function<Object, TypeNode> converter, Data data) {
 
-		if (type == null) {
-			Logger.error(DwarfExporter.class, "Encountered null type while adapting, assuming void-like!");
-			return BaseNode.VOID;
+		if (data == null) {
+			return null;
 		}
 
-		TypeNode cached = nodes.get(type);
+		if (Undefined.isUndefined(data.getDataType())) {
+			int size = data.getDataType().getLength();
 
-		if (cached != null) {
-			return cached;
+			if (size == 0) {
+				return BaseNode.BYTE;
+			}
+
+			return BaseNode.of(size);
 		}
 
-		switch (type) {
-			case TypeDef typedef -> {
-				TypeNode node = adaptToTypeNode(typedef.getDataType(), mapper, nodes);
+		return converter.apply(data.getDataType());
 
-				nodes.put(type, node);
-				return node;
-			}
-
-			case Array array -> {
-				TypeNode element = adaptToTypeNode(array.getDataType(), mapper, nodes);
-				ArrayNode node = ArrayNode.of(element, array.getNumElements());
-
-				nodes.put(type, node);
-				return node;
-			}
-
-			case Structure structure -> {
-				String name = structure.getName();
-
-				StructNode node = StructNode.of(mapper.adaptName(name));
-				nodes.put(type, node);
-
-				if (name.endsWith(StructNode.INLINE_SUFFIX)) {
-					node.markAnonymous();
-				}
-
-				for (DataTypeComponent component : structure.getComponents()) {
-					DataType underlying = component.getDataType();
-
-					if (underlying instanceof BitFieldDataType field) {
-						node.addBitField(field.getBitSize(), component.getFieldName(), component.getComment());
-						continue;
-					}
-
-					TypeNode child = adaptToTypeNode(underlying, mapper, nodes);
-					node.addField(child, component.getFieldName(), component.getComment());
-				}
-
-				return node;
-			}
-
-			case Union union -> {
-				UnionNode node = UnionNode.of(mapper.adaptName(union.getName()));
-				nodes.put(type, node);
-
-				for (DataTypeComponent component : union.getComponents()) {
-					TypeNode child = adaptToTypeNode(component.getDataType(), mapper, nodes);
-					node.addField(child, component.getFieldName(), component.getComment());
-				}
-
-				return node;
-			}
-
-			case Enum enumeration -> {
-				IntegerEnumNode node = IntegerEnumNode.of(mapper.adaptName(enumeration.getName()), BaseNode.of(enumeration.getLength()));
-				nodes.put(type, node);
-
-				// this performs a copy and is slow,
-				// but for some reason Enum doesn't allow as to access the underlying value map
-				long[] values = enumeration.getValues();
-				String[] names = enumeration.getNames();
-
-				for (int i = 0; i < values.length; i++) {
-					node.addEnumerator(names[i], values[i]);
-				}
-
-				return node;
-			}
-
-			case FunctionSignature function -> {
-				FunctionNode node = FunctionNode.of(null, mapper.adaptName(function.getName()));
-				nodes.put(function, node);
-
-				final DataType returnType = function.getReturnType();
-
-				if (returnType != null) {
-					node.result = adaptToTypeNode(returnType, mapper, nodes);
-				}
-
-				for (ParameterDefinition parameter : function.getArguments()) {
-					TypeNode varType = adaptToTypeNode(parameter.getDataType(), mapper, nodes);
-					node.addParameter(parameter.getName(), varType, Storage.ofUnknown(varType.size(getAddressWidth())));
-				}
-
-				return node;
-			}
-
-			case Pointer pointer -> {
-				PointerNode node = PointerNode.of(BaseNode.VOID);
-				nodes.put(type, node);
-
-				// specify type only after we already have the pointer
-				// so that adaptToTypeNode can't fall into an endless loop
-				node.reference = adaptToTypeNode(pointer.getDataType(), mapper, nodes);
-
-				return node;
-			}
-
-			case BuiltIn builtin -> {
-				BaseNode node = BaseNode.of(builtin.getLength());
-				nodes.put(type, node);
-
-				return node;
-			}
-
-			case DefaultDataType defaultType -> {
-				BaseNode node = BaseNode.of(defaultType.getLength());
-				nodes.put(type, node);
-
-				return node;
-			}
-
-			default -> throw new RuntimeException("Unhandled class '" + type.getClass().getSimpleName() + "' for type '" + type + "'!");
-		}
 	}
 
-	public void createDebugFromProgram(Program program, long offset) {
+	public void createDebugFromProgram(Program program, long offset, FunctionDetailProvider provider, GirdlTypeAdapter adapter) {
 
-		final Function<Object, TypeNode> converter = getTypeConverter();
+		final Function<Object, TypeNode> converter = adapter.getTypeConverter();
 
 		/*
 		 * First convert and save all data types that we know of
@@ -232,27 +105,25 @@ public final class DwarfExporter extends DwarfFile {
 		 * in the executable being analyzed but in a separate library.
 		 */
 
-		SymbolIterator symbols = program.getSymbolTable().getAllSymbols(false);
+		SymbolIterator symbols = program.getSymbolTable().getAllSymbols(true);
 
 		while (symbols.hasNext()) {
 			Symbol symbol = symbols.next();
 			Address address = symbol.getAddress();
 
-			Data data = program.getListing().getDataAt(address);
-			boolean undefined = Objects.isNull(data) || Undefined.isUndefined(data.getDataType());
-
 			if (symbol.isExternal()) {
-				Logger.debug(DwarfExporter.class, "Skipping external symbol: " + symbol.getName());
+				Logger.debug(this, "Skipping external symbol: " + symbol.getName());
 				continue;
 			}
 
-			// only save the symbol if it has a sensible type
-			if (!undefined) {
-				DataType type = data.getDataType();
-				TypeNode node = converter.apply(type);
+			TypeNode type = getTypeFromData(converter, program.getListing().getDataAt(address));
 
-				createVariable(node, symbol.getName(), address.getOffset() + offset);
+			if (type == null) {
+				Logger.debug(this, "Skipping untyped symbol: " + symbol.getName());
+				continue;
 			}
+
+			createGlobalVariable(type, symbol.getName(), address.getOffset() + offset);
 		}
 
 		/*
@@ -288,6 +159,10 @@ public final class DwarfExporter extends DwarfFile {
 			// but we need to cast and verify if it is null anyway
 			if (node instanceof FunctionNode functionNode) {
 
+				provider.getFunctionDetails(function).ifPresent(info -> {
+					functionNode.variables.addAll(info.locals);
+				});
+
 				long start = address.getOffset() + offset;
 				long end = start + function.getBody().getNumAddresses();
 
@@ -301,32 +176,6 @@ public final class DwarfExporter extends DwarfFile {
 				createSymbol(functionNode.name, start, node.size(getAddressWidth()), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
 			}
 		}
-	}
-
-	private Function<Object, TypeNode> getTypeConverter() {
-
-		final Map<Object, TypeNode> cache = new IdentityHashMap<>(); // converter cache
-		final NameMapper mapper = new NameMapper(); // assigns new names when there is a conflict
-
-		return type -> {
-			try {
-				return adaptToTypeNode(type, mapper, cache);
-			} catch (Exception e) {
-				Logger.error(DwarfExporter.class, "Unable to adapt type '" + type + "' of java class '" + type.getClass().getSimpleName() + "'. During conversion exception was thrown: " + e);
-			}
-
-			return null;
-		};
-	}
-
-	private static class NameMapper {
-
-		private final Map<String, Mutable<Integer>> mapping = new HashMap<>();
-
-		public String adaptName(String current) {
-			return mapping.computeIfAbsent(current, key -> Mutable.wrap(0)).map(i -> i + 1).to(i -> i == 1 ? current : current + "_" + i);
-		}
-
 	}
 
 }

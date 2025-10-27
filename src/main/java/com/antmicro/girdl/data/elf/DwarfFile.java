@@ -95,8 +95,15 @@ public class DwarfFile extends ElfFile {
 		}
 
 		public Builder add(/* DwarfAttr */ int attribute, /* DwarfForm */ int format, Consumer<SegmentedBuffer> writer) {
+
+			try {
+				// throwing in writer aborts the creation of its attribute
+				writer.accept(body);
+			} catch (RuntimeException e) {
+				return this;
+			}
+
 			attributes.add(new DwarfAttribute(attribute, format));
-			writer.accept(body);
 			return this;
 		}
 
@@ -178,11 +185,11 @@ public class DwarfFile extends ElfFile {
 		createType(node, dies);
 
 		peripheral.bindings.forEach(binding -> {
-			createVariable(node, binding.name, binding.address + offset);
+			createGlobalVariable(node, binding.name, binding.address + offset);
 		});
 	}
 
-	public void createVariable(TypeNode node, String name, long address) {
+	public void createGlobalVariable(TypeNode node, String name, long address) {
 		DataWriter type = createType(node, dies);
 
 		createSymbol(name, address, node.size(bytes), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
@@ -396,13 +403,20 @@ public class DwarfFile extends ElfFile {
 
 		DataWriter returnType =  createType(type.result, before);
 
-		for (FunctionNode.Variable entry : type.parameters) {
-			createType(entry.type, dies);
+		for (FunctionNode.Variable entry : type.variables) {
+			createType(entry.type, before);
 		}
 
 		builder.add(DwarfAttr.NAME, DwarfForm.STRING, type.name);
 		builder.add(DwarfAttr.LOW_PC, DwarfForm.DATA8, buffer -> buffer.putLong(type.low));
 		builder.add(DwarfAttr.HIGH_PC, DwarfForm.DATA8, buffer -> buffer.putLong(type.high));
+		builder.add(DwarfAttr.FRAME_BASE, DwarfForm.EXPRLOC, expr -> {
+			SegmentedBuffer head = expr.putSegment();
+			SegmentedBuffer body = expr.putSegment();
+
+			body.putByte(DwarfOp.CALL_FRAME_CFA);
+			head.putUnsignedLeb128(body.size()); // not linked!
+		});
 
 		if (returnType != null) {
 			builder.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> returnType.from(info)));
@@ -410,15 +424,37 @@ public class DwarfFile extends ElfFile {
 
 		SegmentedBuffer inner = builder.done();
 
-		for (FunctionNode.Variable entry : type.parameters) {
+		for (FunctionNode.Variable entry : type.getStoredVariables()) {
 
-			DataWriter parameterBuffer = createType(entry.type, dies);
+			final DataWriter parameterBuffer = createType(entry.type, dies);
+			final int tag = entry.parameter ? DwarfTag.FORMAL_PARAMETER : DwarfTag.VARIABLE;
+			final Storage storage = entry.storage;
+			final Storage.Type st = storage.type;
 
-			create(DwarfTag.FORMAL_PARAMETER, dies)
+			Builder paramBuilder = create(tag, dies)
 					.add(DwarfAttr.NAME, DwarfForm.STRING, entry.name)
-					.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> parameterBuffer.from(info)))
-					.done();
+					.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> parameterBuffer.from(info)));
 
+			if (st.hasLocation()) {
+				paramBuilder.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC, expr -> {
+
+					SegmentedBuffer head = expr.putSegment();
+					SegmentedBuffer body = expr.putSegment();
+
+					if (st == Storage.Type.REGISTER) body.putByte(DwarfOp.REGX).putUnsignedLeb128(storage.offset);
+					else if (st == Storage.Type.STACK) body.putByte(DwarfOp.FBREG).putSignedLeb128(storage.offset);
+					else throw new RuntimeException("Unknown storage!");
+
+					head.putUnsignedLeb128(body.size()); // not linked!
+
+				});
+			}
+
+			if (st == Storage.Type.CONST) {
+				paramBuilder.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8, buffer -> abbrev.putLong(storage.offset));
+			}
+
+			paramBuilder.done();
 		}
 
 		dies.putByte(0);

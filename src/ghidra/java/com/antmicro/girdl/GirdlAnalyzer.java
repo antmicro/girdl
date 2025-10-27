@@ -15,6 +15,7 @@
  */
 package com.antmicro.girdl;
 
+import com.antmicro.girdl.adapter.GhidraTypeAdapter;
 import com.antmicro.girdl.data.Context;
 import com.antmicro.girdl.data.Importer;
 import com.antmicro.girdl.util.Lazy;

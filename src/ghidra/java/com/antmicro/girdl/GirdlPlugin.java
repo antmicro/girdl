@@ -15,7 +15,6 @@
  */
 package com.antmicro.girdl;
 
-import com.antmicro.girdl.data.elf.DwarfFile;
 import com.antmicro.girdl.util.DwarfExporter;
 import com.antmicro.girdl.util.GhidraFile;
 import com.antmicro.girdl.util.log.Logger;

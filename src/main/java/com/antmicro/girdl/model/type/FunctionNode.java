@@ -16,7 +16,6 @@
 package com.antmicro.girdl.model.type;
 
 import com.antmicro.girdl.data.elf.Storage;
-import com.antmicro.girdl.util.Functional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,8 +26,7 @@ public class FunctionNode extends TypeNode {
 	/// Return value, null if the function doesn't return.
 	public TypeNode result;
 	public final String name;
-	public final List<Variable> parameters = new ArrayList<>();
-	public final List<Variable> locals = new ArrayList<>();
+	public final List<Variable> variables = new ArrayList<>();
 
 	public long low = 0;
 	public long high = 0;
@@ -48,15 +46,19 @@ public class FunctionNode extends TypeNode {
 	}
 
 	public List<Variable> getStoredVariables() {
-		return Functional.mergedList(parameters, locals).stream().filter(var -> var.storage.isKnown()).toList();
+		return variables;
 	}
 
 	public void addParameter(String name, TypeNode type) {
-		parameters.add(new Variable(name, type, Storage.ofUnknown(type.size(4))));
+		variables.add(new Variable(name, type, Storage.UNKNOWN, true));
 	}
 
 	public void addParameter(String name, TypeNode type, Storage storage) {
-		parameters.add(new Variable(name, type, storage));
+		variables.add(new Variable(name, type, storage, true));
+	}
+
+	public void addLocal(String name, TypeNode type, Storage storage) {
+		variables.add(new Variable(name, type, storage, false));
 	}
 
 	@Override
@@ -71,7 +73,7 @@ public class FunctionNode extends TypeNode {
 
 	@Override
 	public int hashCode() {
-		return (result == null ? 0 : result.hashCode()) * 11 + parameters.hashCode() + name.hashCode() * 3 + Long.hashCode(low) * 7 + Long.hashCode(high) * 37;
+		return (result == null ? 0 : result.hashCode()) * 11 + variables.hashCode() + name.hashCode() * 3 + Long.hashCode(low) * 7 + Long.hashCode(high) * 37;
 	}
 
 	@Override
@@ -79,7 +81,7 @@ public class FunctionNode extends TypeNode {
 		if (object == this) return true;
 
 		if (object instanceof FunctionNode other) {
-			return Objects.equals(other.result, result) && other.name.equals(name) && other.parameters.equals(parameters) && other.low == low && other.high == high;
+			return Objects.equals(other.result, result) && other.name.equals(name) && other.variables.equals(variables) && other.low == low && other.high == high;
 		}
 
 		return false;
@@ -94,11 +96,13 @@ public class FunctionNode extends TypeNode {
 		public final String name;
 		public final TypeNode type;
 		public final Storage storage;
+		public final boolean parameter;
 
-		public Variable(String name, TypeNode type, Storage storage) {
+		public Variable(String name, TypeNode type, Storage storage, boolean parameter) {
 			this.name = name;
 			this.type = type;
 			this.storage = storage;
+			this.parameter = parameter;
 		}
 
 		@Override

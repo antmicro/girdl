@@ -13,33 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.data.elf;
+package com.antmicro.girdl.util;
 
-public class Storage {
+import com.antmicro.girdl.model.type.FunctionNode;
+import ghidra.program.model.listing.Function;
 
-	public static final Storage UNKNOWN = new Storage(Type.UNKNOWN, 0);
+import java.util.List;
+import java.util.Optional;
 
-	public enum Type {
-		REGISTER,
-		STACK,
-		CONST,
-		UNKNOWN;
+@FunctionalInterface
+public interface FunctionDetailProvider {
 
-		public boolean hasLocation() {
-			return this == STACK || this == REGISTER;
+	/**
+	 * Get certain information about the functions, that
+	 * can only be obtained by performing a decompilation.
+	 */
+	Optional<FunctionInfo> getFunctionDetails(Function ghidraFunction);
+
+	class FunctionInfo {
+		public final List<FunctionNode.Variable> locals;
+
+		public FunctionInfo(List<FunctionNode.Variable> locals) {
+			this.locals = locals;
 		}
-	}
-
-	final Type type;
-	final long offset;
-
-	public Storage(Type type, long offset) {
-		this.type = type;
-		this.offset = offset;
-	}
-
-	public boolean isKnown() {
-		return type != Type.UNKNOWN;
 	}
 
 }

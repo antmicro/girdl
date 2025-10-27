@@ -15,9 +15,14 @@
  */
 package com.antmicro.girdl;
 
+import com.antmicro.girdl.adapter.GirdlTypeAdapter;
 import com.antmicro.girdl.data.elf.LineProgrammer;
+import com.antmicro.girdl.data.elf.Storage;
+import com.antmicro.girdl.model.type.FunctionNode;
+import com.antmicro.girdl.util.DwarfRegistryResolver;
+import com.antmicro.girdl.util.FunctionDetailProvider;
+import com.antmicro.girdl.util.log.Logger;
 import com.antmicro.girdl.util.source.SourceFactory;
-import com.antmicro.girdl.util.source.SourceLine;
 import ghidra.app.decompiler.ClangBreak;
 import ghidra.app.decompiler.ClangNode;
 import ghidra.app.decompiler.DecompInterface;
@@ -27,23 +32,33 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionIterator;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.listing.VariableStorage;
+import ghidra.program.model.pcode.LocalSymbolMap;
+import ghidra.program.model.pcode.Varnode;
 import ghidra.util.task.DummyCancellableTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
-public class GhidraGlobalDecompiler {
+public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 
 	private final Program program;
+	private final Map<Function, FunctionInfo> functions = new HashMap<>();
 
 	public GhidraGlobalDecompiler(Program program) {
 		this.program = program;
 	}
 
-	public String dump(LineProgrammer programmer, long addend, String sourceFilename) {
+	public String dump(LineProgrammer programmer, long addend, String sourceFilename, GirdlTypeAdapter adapter) {
 
+		DwarfRegistryResolver registers = new DwarfRegistryResolver(program.getLanguage());
 		SourceFactory source = new SourceFactory();
+		var converter = adapter.getTypeConverter();
 
 		DecompileOptions opts = new DecompileOptions();
 		opts.grabFromProgram(program);
@@ -75,6 +90,37 @@ public class GhidraGlobalDecompiler {
 				source.addLine("// Failed to decompile " + where + ": " + res.getErrorMessage());
 				continue;
 			}
+
+			final LocalSymbolMap map = res.getHighFunction().getLocalSymbolMap();
+
+			List<FunctionNode.Variable> locals = new ArrayList<>();
+
+			map.getSymbols().forEachRemaining(symbol -> {
+
+				VariableStorage storage = symbol.getStorage();
+
+				Storage s = null;
+
+				for (Varnode varnode : storage.getVarnodes()) {
+
+					final Address address = varnode.getAddress();
+
+					if (varnode.isConstant()) {
+						s = new Storage(Storage.Type.CONST, varnode.getOffset());
+					} else if (varnode.isRegister()) {
+						s = new Storage(Storage.Type.REGISTER, registers.getDwarfRegister(program.getRegister(varnode)));
+					} else if (address.isStackAddress()) {
+						s = new Storage(Storage.Type.STACK, address.getOffset() - address.getPointerSize());
+					} else {
+						continue;
+					}
+
+					locals.add(new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), s, symbol.isParameter()));
+
+				}
+			});
+
+			functions.put(function, new FunctionInfo(Collections.unmodifiableList(locals)));
 
 			source.addLine("// Decompiled from address " + where);
 			appendSource(source, res);
@@ -130,6 +176,13 @@ public class GhidraGlobalDecompiler {
 			}
 
 		}
+	}
+
+	@Override
+	public Optional<FunctionInfo> getFunctionDetails(Function ghidraFunction) {
+		final FunctionInfo info = functions.get(ghidraFunction);
+		Logger.info(this, "Requested details for function: '" + ghidraFunction.getName() + "', " + (info == null ? "no data available" : "found " + info.locals.size() + " local variables"));
+		return Optional.ofNullable(info);
 	}
 
 }

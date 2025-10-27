@@ -83,7 +83,7 @@ public class ElfFileTest {
 		Assertions.assertEquals(16, outer.size(4));
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
-			dwarf.createVariable(outer, "name", 0x1234567890L);
+			dwarf.createGlobalVariable(outer, "name", 0x1234567890L);
 		}
 
 		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
@@ -128,7 +128,7 @@ public class ElfFileTest {
 		Assertions.assertEquals(16, outer.size(4));
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
-			dwarf.createVariable(outer, "name", 0x1234567890L);
+			dwarf.createGlobalVariable(outer, "name", 0x1234567890L);
 		}
 
 		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
@@ -165,7 +165,7 @@ public class ElfFileTest {
 		Assertions.assertTrue(outer.isAnonymous());
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.I386, 32)) {
-			dwarf.createVariable(outer, "name", 0x1234567890L);
+			dwarf.createGlobalVariable(outer, "name", 0x1234567890L);
 		}
 
 		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
