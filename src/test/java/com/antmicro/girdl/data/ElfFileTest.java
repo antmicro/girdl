@@ -3,6 +3,7 @@ package com.antmicro.girdl.data;
 import com.antmicro.girdl.data.elf.DwarfFile;
 import com.antmicro.girdl.data.elf.ElfFile;
 import com.antmicro.girdl.data.elf.LineProgrammer;
+import com.antmicro.girdl.data.elf.Storage;
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
 import com.antmicro.girdl.data.elf.enums.ElfSectionFlag;
 import com.antmicro.girdl.data.elf.enums.ElfSectionType;
@@ -83,7 +84,7 @@ public class ElfFileTest {
 		Assertions.assertEquals(16, outer.size(4));
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
-			dwarf.createGlobalVariable(outer, "name", 0x1234567890L);
+			dwarf.createGlobalVariable(outer, "name", Storage.ofAddress(0x1234567890L));
 		}
 
 		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
@@ -128,7 +129,7 @@ public class ElfFileTest {
 		Assertions.assertEquals(16, outer.size(4));
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
-			dwarf.createGlobalVariable(outer, "name", 0x1234567890L);
+			dwarf.createGlobalVariable(outer, "name", Storage.ofAddress(0x1234567890L));
 		}
 
 		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
@@ -165,7 +166,7 @@ public class ElfFileTest {
 		Assertions.assertTrue(outer.isAnonymous());
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.I386, 32)) {
-			dwarf.createGlobalVariable(outer, "name", 0x1234567890L);
+			dwarf.createGlobalVariable(outer, "name", Storage.ofAddress(0x1234567890L));
 		}
 
 		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();

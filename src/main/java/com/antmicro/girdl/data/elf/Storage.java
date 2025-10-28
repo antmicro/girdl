@@ -20,26 +20,49 @@ public class Storage {
 	public static final Storage UNKNOWN = new Storage(Type.UNKNOWN, 0);
 
 	public enum Type {
-		REGISTER,
-		STACK,
-		CONST,
-		UNKNOWN;
+		REGISTER(true),
+		STACK(true),
+		ADDRESS(true),
+		CONST(false),
+		UNKNOWN(false);
+
+		private final boolean located;
+
+		Type(boolean located) {
+			this.located = located;
+		}
 
 		public boolean hasLocation() {
-			return this == STACK || this == REGISTER;
+			return located;
 		}
 	}
 
 	final Type type;
 	final long offset;
 
-	public Storage(Type type, long offset) {
+	private Storage(Type type, long offset) {
 		this.type = type;
 		this.offset = offset;
 	}
 
 	public boolean isKnown() {
 		return type != Type.UNKNOWN;
+	}
+
+	public static Storage ofAddress(long offset) {
+		return new Storage(Type.ADDRESS, offset);
+	}
+
+	public static Storage ofStack(long offset) {
+		return new Storage(Type.STACK, offset);
+	}
+
+	public static Storage ofRegister(long offset) {
+		return new Storage(Type.REGISTER, offset);
+	}
+
+	public static Storage ofConst(long offset) {
+		return new Storage(Type.CONST, offset);
 	}
 
 }

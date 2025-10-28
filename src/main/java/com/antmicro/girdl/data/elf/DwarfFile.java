@@ -185,26 +185,38 @@ public class DwarfFile extends ElfFile {
 		createType(node, dies);
 
 		peripheral.bindings.forEach(binding -> {
-			createGlobalVariable(node, binding.name, binding.address + offset);
+			createGlobalVariable(node, binding.name, Storage.ofAddress(binding.address + offset));
 		});
 	}
 
-	public void createGlobalVariable(TypeNode node, String name, long address) {
+	public void createGlobalVariable(TypeNode node, String name, Storage storage) {
 		DataWriter type = createType(node, dies);
 
-		createSymbol(name, address, node.size(bytes), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
+		if (storage.type == Storage.Type.ADDRESS) {
+			createSymbol(name, storage.offset, node.size(bytes), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
+		}
 
-		create(DwarfTag.VARIABLE, dies)
+		Builder builder = create(DwarfTag.VARIABLE, dies)
 				.add(DwarfAttr.NAME, DwarfForm.STRING, name)
-				.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> type.from(info)))
-				.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC, expr -> {
-					SegmentedBuffer head = expr.putSegment();
-					SegmentedBuffer body = expr.putSegment();
+				.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> type.from(info)));
 
-					body.putByte(DwarfOp.ADDR).putDynamic(bits, address);
-					head.putUnsignedLeb128(body.size()); // not linked!
-				})
-				.done();
+		if (storage.type.hasLocation()) {
+			builder.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC, expr -> {
+				SegmentedBuffer head = expr.putSegment();
+				SegmentedBuffer body = expr.putSegment();
+
+				if (storage.type == Storage.Type.ADDRESS) body.putByte(DwarfOp.ADDR).putDynamic(bits, storage.offset);
+				else throw new RuntimeException("Unsupported global variable storage!");
+
+				head.putUnsignedLeb128(body.size()); // not linked!
+			});
+		}
+
+		if (storage.type == Storage.Type.CONST) {
+			builder.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8, buffer -> buffer.putLong(storage.offset));
+		}
+
+		builder.done();
 	}
 
 	public void createType(TypeNode type) {
@@ -443,6 +455,7 @@ public class DwarfFile extends ElfFile {
 
 					if (st == Storage.Type.REGISTER) body.putByte(DwarfOp.REGX).putUnsignedLeb128(storage.offset);
 					else if (st == Storage.Type.STACK) body.putByte(DwarfOp.FBREG).putSignedLeb128(storage.offset);
+					else if (st == Storage.Type.ADDRESS) body.putByte(DwarfOp.ADDR).putDynamic(bits, storage.offset);
 					else throw new RuntimeException("Unknown storage!");
 
 					head.putUnsignedLeb128(body.size()); // not linked!
@@ -451,7 +464,7 @@ public class DwarfFile extends ElfFile {
 			}
 
 			if (st == Storage.Type.CONST) {
-				paramBuilder.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8, buffer -> abbrev.putLong(storage.offset));
+				paramBuilder.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8, buffer -> buffer.putLong(storage.offset));
 			}
 
 			paramBuilder.done();

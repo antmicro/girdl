@@ -32,7 +32,6 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionIterator;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.listing.VariableStorage;
 import ghidra.program.model.pcode.LocalSymbolMap;
 import ghidra.program.model.pcode.Varnode;
 import ghidra.util.task.DummyCancellableTaskMonitor;
@@ -92,30 +91,26 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 			}
 
 			final LocalSymbolMap map = res.getHighFunction().getLocalSymbolMap();
-
-			List<FunctionNode.Variable> locals = new ArrayList<>();
+			final List<FunctionNode.Variable> locals = new ArrayList<>();
 
 			map.getSymbols().forEachRemaining(symbol -> {
 
-				VariableStorage storage = symbol.getStorage();
-
-				Storage s = null;
-
-				for (Varnode varnode : storage.getVarnodes()) {
+				for (Varnode varnode : symbol.getStorage().getVarnodes()) {
 
 					final Address address = varnode.getAddress();
+					final Storage storage;
 
 					if (varnode.isConstant()) {
-						s = new Storage(Storage.Type.CONST, varnode.getOffset());
+						storage = Storage.ofConst(varnode.getOffset());
 					} else if (varnode.isRegister()) {
-						s = new Storage(Storage.Type.REGISTER, registers.getDwarfRegister(program.getRegister(varnode)));
+						storage = Storage.ofRegister(registers.getDwarfRegister(program.getRegister(varnode)));
 					} else if (address.isStackAddress()) {
-						s = new Storage(Storage.Type.STACK, address.getOffset() - address.getPointerSize());
+						storage = Storage.ofStack(address.getOffset() - address.getPointerSize());
 					} else {
 						continue;
 					}
 
-					locals.add(new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), s, symbol.isParameter()));
+					locals.add(new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), storage, symbol.isParameter()));
 
 				}
 			});

@@ -18,6 +18,7 @@ package com.antmicro.girdl.util;
 import com.antmicro.girdl.GhidraGlobalDecompiler;
 import com.antmicro.girdl.adapter.GirdlTypeAdapter;
 import com.antmicro.girdl.data.elf.DwarfFile;
+import com.antmicro.girdl.data.elf.Storage;
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
 import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
 import com.antmicro.girdl.model.type.BaseNode;
@@ -30,8 +31,10 @@ import ghidra.program.model.data.Undefined;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.FunctionIterator;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.symbol.Equate;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolIterator;
+import org.python.antlr.op.Eq;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -100,9 +103,8 @@ public final class DwarfExporter extends DwarfFile {
 
 		/*
 		 * Next, we add all symbols (global variables, etc.) and their types (if
-		 * not yet seen before), we exclude dynamic symbols (by setting the flag
-		 * to 'false') dynamic symbols are symbols whose definitions do not reside
-		 * in the executable being analyzed but in a separate library.
+		 * not yet seen before), we do hover skip some of them, mainly assembly labels (by
+		 * the fact they have a null type).
 		 */
 
 		SymbolIterator symbols = program.getSymbolTable().getAllSymbols(true);
@@ -123,7 +125,20 @@ public final class DwarfExporter extends DwarfFile {
 				continue;
 			}
 
-			createGlobalVariable(type, symbol.getName(), address.getOffset() + offset);
+			createGlobalVariable(type, symbol.getName(), Storage.ofAddress(address.getOffset() + offset));
+		}
+
+		/*
+		 * Equates are a type of constant that can be used for numeric values in the code
+		 * they are resolved by Ghidra in all places in the code automatically (any use of
+		 * the equated value turns to a use of the equate).
+		 */
+
+		Iterator<Equate> equates = program.getEquateTable().getEquates();
+
+		while (equates.hasNext()) {
+			Equate equate = equates.next();
+			createGlobalVariable(BaseNode.LONG, equate.getName(), Storage.ofConst(equate.getValue()));
 		}
 
 		/*
