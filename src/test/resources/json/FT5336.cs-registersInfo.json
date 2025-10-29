@@ -1,0 +1,264 @@
+[
+  {
+    "Name": "TouchDataRegisters",
+    "Registers": [
+      {
+        "Name": "TouchXHigh",
+        "OriginalName": "TouchXHigh",
+        "Address": 0,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      },
+      {
+        "Name": "TouchXLow",
+        "OriginalName": "TouchXLow",
+        "Address": 1,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      },
+      {
+        "Name": "TouchYHigh",
+        "OriginalName": "TouchYHigh",
+        "Address": 2,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      },
+      {
+        "Name": "TouchYLow",
+        "OriginalName": "TouchYLow",
+        "Address": 3,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      },
+      {
+        "Name": "TouchWeight",
+        "OriginalName": "TouchWeight",
+        "Address": 4,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      },
+      {
+        "Name": "TouchMisc",
+        "OriginalName": "TouchMisc",
+        "Address": 5,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      }
+    ]
+  },
+  {
+    "Name": "Registers",
+    "Registers": [
+      {
+        "Name": "GestureId",
+        "OriginalName": "GestureId",
+        "Address": 1,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "MaybeUndefined",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      },
+      {
+        "Name": "TouchDataStatus",
+        "OriginalName": "TouchDataStatus",
+        "Address": 2,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      },
+      {
+        "Name": "TouchBeginRegister",
+        "OriginalName": "TouchBeginRegister",
+        "Address": 3,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      },
+      {
+        "Name": "TouchEndRegister",
+        "OriginalName": "TouchEndRegister",
+        "Address": 33,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      },
+      {
+        "Name": "InterruptStatus",
+        "OriginalName": "InterruptStatus",
+        "Address": 164,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      },
+      {
+        "Name": "ChipVendorId",
+        "OriginalName": "ChipVendorId",
+        "Address": 168,
+        "Width": null,
+        "ResetValue": null,
+        "SpecialKind": "NoDefineFound",
+        "CallbackInfo": {
+          "HasReadCb": false,
+          "HasWriteCb": false,
+          "HasChangeCb": false,
+          "HasValueProviderCb": false
+        },
+        "ParentReg": null,
+        "ArrayInfo": {
+          "IsArray": false,
+          "Length": 0,
+          "Stride": 0
+        },
+        "Fields": []
+      }
+    ]
+  }
+]

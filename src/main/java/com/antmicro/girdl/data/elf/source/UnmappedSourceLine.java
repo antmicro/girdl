@@ -13,32 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util.source;
+package com.antmicro.girdl.data.elf.source;
 
-public final class MappedSourceLine extends SourceLine {
+public final class UnmappedSourceLine extends SourceLine {
 
-	public final long line;
-	public final long address;
-
-	MappedSourceLine(long line, String source, long address) {
+	UnmappedSourceLine(String source) {
 		super(source);
-
-		this.line = line;
-		this.address = address;
-	}
-
-	@Override
-	public String toString() {
-		return "0x" + Long.toHexString(address) + ": " + getSourceLine();
-	}
-
-	@Override
-	public int compareTo(SourceLine other) {
-		if (other instanceof MappedSourceLine mapped) {
-			return Long.compare(address, mapped.address);
-		}
-
-		return super.compareTo(other);
 	}
 
 }

@@ -13,28 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util.source;
+package com.antmicro.girdl.data.elf.source;
 
-public abstract class SourceLine implements Comparable<SourceLine> {
+public final class MappedSourceLine extends SourceLine {
 
-	private final String source;
+	public final long line;
+	public final long address;
 
-	protected SourceLine(String source) {
-		this.source = source;
+	MappedSourceLine(long line, String source, long address) {
+		super(source);
+
+		this.line = line;
+		this.address = address;
 	}
 
 	@Override
 	public String toString() {
-		return source;
+		return "0x" + Long.toHexString(address) + ": " + getSourceLine();
 	}
 
 	@Override
 	public int compareTo(SourceLine other) {
-		throw new RuntimeException("Can't compare " + this.getClass().getSimpleName() + " with " + other.getClass().getSimpleName());
-	}
+		if (other instanceof MappedSourceLine mapped) {
+			return Long.compare(address, mapped.address);
+		}
 
-	public final String getSourceLine() {
-		return source;
+		return super.compareTo(other);
 	}
 
 }

@@ -5,28 +5,37 @@ import os
 
 DATA=os.environ['DATA']
 
+test_count = 0
+success_count = 0
+failed_count = 0
+skip_count = 0
+
 def normalize_string(str):
 
     lines = str.split('\n')
     length = len(str)
+    do_trim = False
 
     for line in lines:
 
         if len(line) == 0:
             continue
 
-        stipped = len(line) - len(line.lstrip())
+        stipped = len(line) - len(line.lstrip(' '))
 
         if stipped == 0:
             continue
 
         if stipped < length:
             length = stipped
+            do_trim = True
 
-    return "\n".join([line[length:] for line in lines])
+    return "\n".join([line[length:] for line in lines]) if do_trim else str
 
 
 def gdb_test(name, setup, test, expect, condition="True"):
+    global test_count, failed_count, success_count, skip_count
+
     print(f'\n\033[1mTEST: \033[36m{name}\033[0m')
 
     condition_value = eval(condition, {"exists": os.path.exists})
@@ -34,7 +43,10 @@ def gdb_test(name, setup, test, expect, condition="True"):
     if not condition_value:
         print(f'      -- Condition {condition}: {condition_value}')
         print("      \033[1;33mSKIPPED\033[0m")
+        skip_count += 1
         return
+
+    test_count += 1
 
     try:
         if setup:
@@ -55,15 +67,31 @@ def gdb_test(name, setup, test, expect, condition="True"):
             needle = normalize_string(expect)
 
             if needle in output:
-                print("      \033[1;32mPASSED\033[0m")
+                success_count += 1
+                print("      \033[1;32mPASSED\033[0m ")
                 return
             else:
                 print(f'      -- Substring "{needle} not found in input "{output}"')
+
     except Exception as e:
         print(f'      -- Exception: {e}')
-        pass
 
+    failed_count += 1
     print("      \033[1;31mFAILED\033[0m")
+
+gdb_test(
+    name='Check if Renode RDL can be loaded',
+    setup='java -jar girdl/lib/girdl.jar -i "$DATA/ABRTCMC.rdl" -q',
+    test='add-symbol-file symbols.dwarf\ninfo types',
+    expect="""
+        (gdb) All defined types:
+        
+        File symbols.dwarf.c:
+            struct ABRTCMC;
+            bits
+            uint8_t
+        (gdb)"""
+)
 
 gdb_test(
     name='Check if peripheral types are being exported',
@@ -253,6 +281,49 @@ gdb_test(
                 bits MCOSEL : 3;
                 bits CCOPRE : 3;
             } CFGR;"""
+)
+
+gdb_test(
+    name='Check if JSON imports works',
+    setup='java -jar girdl/lib/girdl.jar -i "$DATA/json/FT5336.cs-registersInfo.json" -q > /dev/null',
+    test='add-symbol-file symbols.dwarf\ninfo types',
+    expect="""
+        (gdb) All defined types:
+        
+        File symbols.dwarf.c:
+            struct FT5336;
+            uint8_t
+        (gdb)"""
+)
+
+gdb_test(
+    name='Check if JSON imports all peripheral types',
+    setup='java -jar girdl/lib/girdl.jar -i "$DATA/json/AK0991x.cs-registersInfo.json" -q > /dev/null',
+    test='add-symbol-file symbols.dwarf\ninfo types',
+    expect="""
+        (gdb) All defined types:
+        
+        File symbols.dwarf.c:
+            struct AK0991x;
+            bits
+            uint8_t
+        (gdb)"""
+)
+
+gdb_test(
+    name='Check if JSON imports registers and fields from peripherals',
+    setup='java -jar girdl/lib/girdl.jar -i "$DATA/json/FT5336.cs-registersInfo.json" -q > /dev/null',
+    test='add-symbol-file symbols.dwarf\nptype struct FT5336',
+    expect="""
+        (gdb) type = struct FT5336 {
+            uint8_t TouchXHigh;
+            uint8_t TouchXLow;
+            uint8_t TouchYHigh;
+            uint8_t TouchYLow;
+            uint8_t TouchWeight;
+            uint8_t TouchMisc;
+        }
+        (gdb)"""
 )
 
 gdb_test(
@@ -636,3 +707,5 @@ gdb_test(
             } Capabilities;""",
     condition=f'exists("{DATA}/i3c/src/rdl/registers.rdl")'
 )
+
+print(f'\nRun {test_count} tests (\033[1;33m{skip_count}\033[0m skipped): \033[1;32m{success_count}\033[0m passed, \033[1;31m{failed_count}\033[0m failed')

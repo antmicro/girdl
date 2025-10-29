@@ -13,12 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util.source;
+package com.antmicro.girdl.data.elf.source;
 
-public final class UnmappedSourceLine extends SourceLine {
+public abstract class SourceLine implements Comparable<SourceLine> {
 
-	UnmappedSourceLine(String source) {
-		super(source);
+	private final String source;
+
+	protected SourceLine(String source) {
+		this.source = source;
+	}
+
+	@Override
+	public String toString() {
+		return source;
+	}
+
+	@Override
+	public int compareTo(SourceLine other) {
+		throw new RuntimeException("Can't compare " + this.getClass().getSimpleName() + " with " + other.getClass().getSimpleName());
+	}
+
+	public final String getSourceLine() {
+		return source;
 	}
 
 }

@@ -19,6 +19,7 @@ import com.antmicro.girdl.data.bin.SegmentedBuffer;
 import com.antmicro.girdl.data.elf.enums.DwarfContent;
 import com.antmicro.girdl.data.elf.enums.DwarfForm;
 import com.antmicro.girdl.data.elf.enums.DwarfLine;
+import com.antmicro.girdl.data.elf.source.SourceFactory;
 
 import java.util.HashMap;
 
@@ -189,6 +190,21 @@ public class LineProgrammer {
 	 */
 	public void setLine(long target) {
 		advanceLine(target - line);
+	}
+
+	/**
+	 * Flush the whole source document into the programmer.
+	 */
+	public void encodeSource(SourceFactory source, long addend) {
+
+		source.forEachMapped(line -> {
+			long offset = line.address + addend;
+
+			setLine(line.line);
+			setAddress(offset);
+			next();
+		});
+
 	}
 
 }

@@ -60,7 +60,7 @@ public class DwarfFile extends ElfFile {
 	private final SegmentedBuffer info;
 	private final SegmentedBuffer dies;
 	private final SegmentedBuffer abbrev;
-	protected final SegmentedBuffer bss;
+	private final SegmentedBuffer bss;
 
 	private final Map<TypeNode, DataWriter> types = new HashMap<>();
 	private final int bits;
@@ -469,6 +469,8 @@ public class DwarfFile extends ElfFile {
 
 			paramBuilder.done();
 		}
+
+		createSymbol(type.name, type.low, type.size(getAddressWidth()), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
 
 		dies.putByte(0);
 		return inner;

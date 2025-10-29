@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util.source;
+package com.antmicro.girdl.data.elf.source;
 
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -63,6 +65,20 @@ public final class SourceFactory {
 	 */
 	public String asSource() {
 		return lines.stream().map(SourceLine::getSourceLine).collect(Collectors.joining("\n"));
+	}
+
+	/**
+	 * Export all the lines into a single source document,
+	 * both mapped and unmapped ones.
+	 */
+	public void saveSource(String path) {
+		String source = asSource();
+
+		try (FileOutputStream sourceOutput = new FileOutputStream(path)) {
+			sourceOutput.write(source.getBytes(StandardCharsets.UTF_8));
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**

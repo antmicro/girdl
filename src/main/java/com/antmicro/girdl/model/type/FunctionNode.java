@@ -68,7 +68,7 @@ public class FunctionNode extends TypeNode {
 
 	@Override
 	public int size(int width) {
-		return 0;
+		return Math.toIntExact(high - low);
 	}
 
 	@Override

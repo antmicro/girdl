@@ -16,13 +16,12 @@
 package com.antmicro.girdl;
 
 import com.antmicro.girdl.adapter.GirdlTypeAdapter;
-import com.antmicro.girdl.data.elf.LineProgrammer;
 import com.antmicro.girdl.data.elf.Storage;
+import com.antmicro.girdl.data.elf.source.SourceFactory;
 import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.util.DwarfRegistryResolver;
 import com.antmicro.girdl.util.FunctionDetailProvider;
 import com.antmicro.girdl.util.log.Logger;
-import com.antmicro.girdl.util.source.SourceFactory;
 import ghidra.app.decompiler.ClangBreak;
 import ghidra.app.decompiler.ClangNode;
 import ghidra.app.decompiler.DecompInterface;
@@ -53,7 +52,7 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 		this.program = program;
 	}
 
-	public String dump(LineProgrammer programmer, long addend, String sourceFilename, GirdlTypeAdapter adapter) {
+	public SourceFactory dump(GirdlTypeAdapter adapter) {
 
 		DwarfRegistryResolver registers = new DwarfRegistryResolver(program.getLanguage());
 		SourceFactory source = new SourceFactory();
@@ -125,24 +124,7 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 
 		}
 
-		int dir = programmer.addDirectory("./");
-		programmer.setFile(dir, sourceFilename);
-		programmer.setColumn(1);
-
-		source.forEachMapped(line -> {
-
-			long offset = line.address + addend;
-
-			programmer.setLine(line.line);
-			programmer.setAddress(offset);
-			programmer.next();
-
-		});
-
-		programmer.advanceAddress(1);
-		programmer.endSequence();
-
-		return source.asSource();
+		return source;
 	}
 
 	private void appendSource(SourceFactory source, DecompileResults result) {

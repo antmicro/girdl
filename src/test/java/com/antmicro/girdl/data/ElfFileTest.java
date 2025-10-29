@@ -8,6 +8,7 @@ import com.antmicro.girdl.data.elf.enums.ElfMachine;
 import com.antmicro.girdl.data.elf.enums.ElfSectionFlag;
 import com.antmicro.girdl.data.elf.enums.ElfSectionType;
 import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
+import com.antmicro.girdl.data.elf.source.SourceFactory;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.FunctionNode;
@@ -420,6 +421,186 @@ public class ElfFileTest {
 				  [0x00000039]  Advance Line by 55 to 56
 				  [0x0000003b]  Advance PC by 37 to 0x25
 				  [0x0000003d]  Advance Line by -10 to 46"""));
+
+	}
+
+	@Test
+	void testDwarfSource() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		SourceFactory factory = new SourceFactory();
+		factory.addLine("Line 1", 100);
+		factory.addLine("Line 2", 104);
+		factory.addLine("Line 3", 108);
+		factory.saveSource(temp + ".c");
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			LineProgrammer programmer = dwarf.createLineProgram();
+
+			int dir = programmer.addDirectory("./");
+			programmer.setFile(dir, temp + ".c");
+			programmer.setColumn(1);
+
+			programmer.encodeSource(factory, 0);
+			programmer.advanceAddress(1);
+			programmer.endSequence();
+
+			FunctionNode func = FunctionNode.of(BaseNode.LONG, "func");
+			func.setCodeSpan(100, 104);
+			dwarf.createType(func);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String content = Util.readContents(temp + ".c");
+		Assertions.assertEquals("Line 1\nLine 2\nLine 3", content);
+
+		String functions = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\ninfo functions").output();
+		Assertions.assertTrue(functions.contains("""
+				(gdb) All defined functions:
+				
+				File %s:
+					static long func();
+				""".formatted(temp.getName() + ".c")));
+
+		String address = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\nx func").output();
+		Assertions.assertTrue(address.contains("(gdb) 0x64 <func>"));
+
+		String lines = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\nl func").output();
+		Assertions.assertTrue(lines.contains("""
+				1	Line 1
+				2	Line 2
+				3	Line 3
+				""".formatted(temp.getName() + ".c")));
+
+	}
+
+	@Test
+	void testDwarfConsts() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			dwarf.createGlobalVariable(BaseNode.LONG, "name", Storage.ofConst(0x1234567890L));
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("DW_AT_name        : long"));
+		Assertions.assertTrue(debug.contains("DW_AT_const_value : 0x1234567890"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : name"));
+		Assertions.assertFalse(debug.contains("DW_OP_addr"));
+
+	}
+
+	@Test
+	void testDwarfConstsInDebugger() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			dwarf.createGlobalVariable(BaseNode.LONG, "name", Storage.ofConst(0x1234567890L));
+		}
+
+		String lines = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\np /x name").output();
+		Assertions.assertTrue(lines.contains("0x1234567890"));
+
+	}
+
+	@Test
+	void testDwarfFunctionParameters() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		FunctionNode function = FunctionNode.of(BaseNode.LONG, "my_func");
+		function.setCodeSpan(0x100, 0x200);
+		function.addParameter("a", BaseNode.INT, Storage.ofStack(0));
+		function.addParameter("b", BaseNode.INT, Storage.ofStack(-4));
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			dwarf.createType(function);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String address = Util.runCommand("gdb", temp.getAbsolutePath()).withInput("add-symbol-file " + temp.getAbsolutePath() + "\nx my_func").output();
+		Assertions.assertTrue(address.contains("0x100"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("DW_TAG_formal_parameter"));
+		Assertions.assertTrue(debug.contains("DW_OP_fbreg: 0"));
+		Assertions.assertTrue(debug.contains("DW_OP_fbreg: -4"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : a"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : b"));
+		Assertions.assertTrue(debug.contains("DW_OP_call_frame_cfa"));
+		Assertions.assertTrue(debug.contains("DW_AT_frame_base"));
+
+	}
+
+	@Test
+	void testDwarfFunctionLocals() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		FunctionNode function = FunctionNode.of(BaseNode.LONG, "my_func");
+		function.setCodeSpan(0x100, 0x200);
+		function.addLocal("a", BaseNode.INT, Storage.ofStack(0));
+		function.addLocal("b", BaseNode.INT, Storage.ofStack(-4));
+		function.addLocal("c", BaseNode.INT, Storage.ofRegister(10));
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			dwarf.createType(function);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("DW_TAG_variable"));
+		Assertions.assertTrue(debug.contains("DW_OP_fbreg: 0"));
+		Assertions.assertTrue(debug.contains("DW_OP_fbreg: -4"));
+		Assertions.assertTrue(debug.contains("DW_OP_regx: 10"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : a"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : b"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : c"));
+		Assertions.assertTrue(debug.contains("DW_OP_call_frame_cfa"));
+		Assertions.assertTrue(debug.contains("DW_AT_frame_base"));
+
+	}
+
+	@Test
+	void testDwarfFunctionLocalConst() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		FunctionNode function = FunctionNode.of(BaseNode.LONG, "my_func");
+		function.setCodeSpan(0x100, 0x200);
+		function.addLocal("c", BaseNode.INT, Storage.ofConst(0x42));
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			dwarf.createType(function);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("DW_TAG_variable"));
+		Assertions.assertFalse(debug.contains("DW_TAG_formal_parameter"));
+		Assertions.assertFalse(debug.contains("DW_OP_regx"));
+		Assertions.assertFalse(debug.contains("DW_OP_fbreg"));
+		Assertions.assertTrue(debug.contains("DW_AT_const_value : 0x42"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : c"));
 
 	}
 

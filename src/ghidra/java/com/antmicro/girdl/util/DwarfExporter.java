@@ -18,9 +18,10 @@ package com.antmicro.girdl.util;
 import com.antmicro.girdl.GhidraGlobalDecompiler;
 import com.antmicro.girdl.adapter.GirdlTypeAdapter;
 import com.antmicro.girdl.data.elf.DwarfFile;
+import com.antmicro.girdl.data.elf.LineProgrammer;
 import com.antmicro.girdl.data.elf.Storage;
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
-import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
+import com.antmicro.girdl.data.elf.source.SourceFactory;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.model.type.TypeNode;
@@ -37,8 +38,6 @@ import ghidra.program.model.symbol.SymbolIterator;
 import ghidra.util.Msg;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.function.Function;
 
@@ -53,15 +52,20 @@ public final class DwarfExporter extends DwarfFile {
 			GirdlTypeAdapter adapter = new GirdlTypeAdapter();
 
 			GhidraGlobalDecompiler decompiler = new GhidraGlobalDecompiler(program);
-			String source = decompiler.dump(exporter.createLineProgram(), offset, dwarf.getName() + ".c", adapter);
+
+			SourceFactory source = decompiler.dump(adapter);
+			source.saveSource(dwarf.getAbsolutePath() + ".c");
+
+			LineProgrammer programmer = exporter.createLineProgram();
+			int dir = programmer.addDirectory("./");
+			programmer.setFile(dir, dwarf.getName() + ".c");
+			programmer.setColumn(1);
+
+			programmer.encodeSource(source, offset);
+			programmer.advanceAddress(1);
+			programmer.endSequence();
 
 			exporter.createDebugFromProgram(program, offset, decompiler, adapter);
-
-			try (FileOutputStream sourceOutput = new FileOutputStream(dwarf.getAbsolutePath() + ".c")) {
-				sourceOutput.write(source.getBytes(StandardCharsets.UTF_8));
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
 		}
 	}
 
@@ -187,10 +191,6 @@ public final class DwarfExporter extends DwarfFile {
 				// (start address is not enough for GDB)
 				functionNode.setCodeSpan(start, end);
 				createType(functionNode);
-
-				// the symbol itself is not required by GDB,
-				// but for completes and compatibility be may as well define it as such
-				createSymbol(functionNode.name, start, node.size(getAddressWidth()), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
 			}
 		}
 

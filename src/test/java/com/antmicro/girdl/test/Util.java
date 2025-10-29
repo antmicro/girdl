@@ -15,6 +15,7 @@
  */
 package com.antmicro.girdl.test;
 
+import com.antmicro.girdl.util.Functional;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.junit.jupiter.api.Assertions;
@@ -26,6 +27,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
@@ -73,6 +76,10 @@ public final class Util {
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	public static String readContents(String path) {
+		return Functional.except(() -> Files.readString(Path.of(path))).orElseThrow();
 	}
 
 	public static class Command {

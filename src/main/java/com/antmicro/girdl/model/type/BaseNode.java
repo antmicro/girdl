@@ -21,6 +21,7 @@ public class BaseNode extends TypeNode {
 	public static final BaseNode VOID = of(0, "void");
 	public static final TypeNode BITS = of(8, "bits");
 	public static final TypeNode LONG = of(8, "long");
+	public static final TypeNode INT = of(4, "int");
 
 	public final int bytes;
 	public final String name;
