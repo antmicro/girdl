@@ -208,7 +208,7 @@ public class DwarfFile extends ElfFile {
 				if (storage.type == Storage.Type.ADDRESS) body.putByte(DwarfOp.ADDR).putDynamic(bits, storage.offset);
 				else throw new RuntimeException("Unsupported global variable storage!");
 
-				head.putUnsignedLeb128(body.size()); // not linked!
+				head.putUnsignedLeb128(body.size()); // not linked, the size can't change past this point!
 			});
 		}
 
@@ -427,7 +427,7 @@ public class DwarfFile extends ElfFile {
 			SegmentedBuffer body = expr.putSegment();
 
 			body.putByte(DwarfOp.CALL_FRAME_CFA);
-			head.putUnsignedLeb128(body.size()); // not linked!
+			head.putUnsignedLeb128(body.size()); // not linked, the size can't change past this point!
 		});
 
 		if (returnType != null) {
@@ -458,7 +458,7 @@ public class DwarfFile extends ElfFile {
 					else if (st == Storage.Type.ADDRESS) body.putByte(DwarfOp.ADDR).putDynamic(bits, storage.offset);
 					else throw new RuntimeException("Unknown storage!");
 
-					head.putUnsignedLeb128(body.size()); // not linked!
+					head.putUnsignedLeb128(body.size()); // not linked, the size can't change past this point!
 
 				});
 			}

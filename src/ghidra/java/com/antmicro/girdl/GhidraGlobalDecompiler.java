@@ -107,6 +107,9 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 					} else if (address.isStackAddress()) {
 						storage = Storage.ofStack(address.getOffset() - address.getPointerSize());
 					} else {
+
+						// unsupported storage, completely skip this variable from output
+						Logger.warn(this, "Unknown storage for varnode " + symbol.getName() + ": " + varnode + ", from function '" + function.getName() + "'");
 						continue;
 					}
 

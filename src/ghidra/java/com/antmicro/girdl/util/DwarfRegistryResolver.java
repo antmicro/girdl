@@ -28,7 +28,7 @@ public class DwarfRegistryResolver {
 	private int nextDwarfOffset = 0;
 
 	private final DWARFRegisterMappings registers;
-	private final Map<Integer, Integer> mapping = new HashMap<>();
+	private final Map<Integer, Integer> registerMappingCache = new HashMap<>();
 
 	public DwarfRegistryResolver(Language language) {
 		registers = Functional.except(() -> DWARFRegisterMappingsManager.getMappingForLang(language)).orElseThrow();
@@ -36,8 +36,8 @@ public class DwarfRegistryResolver {
 
 	public int getDwarfRegister(Register register) {
 
-		int offset = register.getOffset();
-		Integer dwarf = mapping.get(offset);
+		int targetGhidraOffset = register.getOffset();
+		Integer dwarf = registerMappingCache.get(targetGhidraOffset);
 
 		if (dwarf != null) {
 			return dwarf;
@@ -48,6 +48,10 @@ public class DwarfRegistryResolver {
 		// largest register count of any supported instruction set
 		for (int i = 0; i < 1000; i ++) {
 
+			// we restart (see dwarfOffset and nextDwarfOffset) from the index of the
+			// previously checked DWARF register and continue for UP TO this loop iteration
+			// count, all found registers (including ones we were NOT looking for are cached).
+
 			final int dwarfOffset = nextDwarfOffset ++;
 			final Register ghidraRegister = registers.getGhidraReg(dwarfOffset);
 
@@ -55,15 +59,17 @@ public class DwarfRegistryResolver {
 				continue;
 			}
 
-			mapping.put(ghidraRegister.getOffset(), dwarfOffset);
+			// add found register to cache (even if this is not the one we were
+			// looking for), this is needed as this loop will check each DWARF register only once.
+			registerMappingCache.put(ghidraRegister.getOffset(), dwarfOffset);
 
-			if (ghidraRegister.getOffset() == register.getOffset()) {
+			if (ghidraRegister.getOffset() == targetGhidraOffset) {
 				return dwarfOffset;
 			}
 
 		}
 
-		throw new RuntimeException("Unable to resolve DWARF identifier of register " + register.getName() + "!");
+		throw new RuntimeException("Unable to resolve DWARF identifier of Ghidra register " + register.getName() + "!");
 
 	}
 
