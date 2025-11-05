@@ -13,35 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.data.elf.storage;
 
-import java.util.Optional;
-import java.util.function.Supplier;
+import com.antmicro.girdl.data.bin.SegmentedBuffer;
+import com.antmicro.girdl.data.elf.enums.DwarfOp;
 
-public final class Lazy<T> {
+import java.util.function.Consumer;
 
-	private boolean empty = true;
-	private T value = null;
+/**
+ * Represents elements stored in processor registers,
+ * the exact register is expressed by their DWARF IDs.
+ */
+public class RegisterStorage extends StaticStorage {
 
-	public T get(Supplier<T> factory) {
-		if (empty) {
-			value = factory.get();
-			empty = false;
-		}
+	public final long register;
 
-		return value;
+	public RegisterStorage(long register) {
+		this.register = register;
 	}
 
-	public void invalidate() {
-		empty = true;
-	}
-
-	public boolean exists() {
-		return !empty;
-	}
-
-	public Optional<T> value() {
-		return empty ? Optional.empty() : Optional.of(value);
+	@Override
+	public Consumer<SegmentedBuffer> asExpression(int width) {
+		return expr -> expr.putByte(DwarfOp.REGX).putUnsignedLeb128(register);
 	}
 
 }

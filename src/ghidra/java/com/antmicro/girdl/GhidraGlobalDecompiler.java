@@ -102,7 +102,7 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 					if (varnode.isConstant()) {
 						storage = Storage.ofConst(varnode.getOffset());
 					} else if (varnode.isRegister()) {
-						storage = Storage.ofRegister(registers.getDwarfRegister(program.getRegister(varnode)));
+						storage = Storage.ofDwarfRegister(registers.getDwarfRegister(program.getRegister(varnode)));
 					} else if (address.isStackAddress()) {
 						storage = Storage.ofStack(address.getOffset() - address.getPointerSize());
 					} else {

@@ -13,35 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.data.elf.storage;
 
-import java.util.Optional;
-import java.util.function.Supplier;
+import com.antmicro.girdl.data.bin.SegmentedBuffer;
+import com.antmicro.girdl.data.elf.enums.DwarfOp;
 
-public final class Lazy<T> {
+import java.util.function.Consumer;
 
-	private boolean empty = true;
-	private T value = null;
+/**
+ * Represents elements stored on the function's stack and
+ * can be access with the stack pointer register.
+ */
+public class StackStorage extends StaticStorage {
 
-	public T get(Supplier<T> factory) {
-		if (empty) {
-			value = factory.get();
-			empty = false;
-		}
+	public final long offset;
 
-		return value;
+	public StackStorage(long offset) {
+		this.offset = offset;
 	}
 
-	public void invalidate() {
-		empty = true;
-	}
-
-	public boolean exists() {
-		return !empty;
-	}
-
-	public Optional<T> value() {
-		return empty ? Optional.empty() : Optional.of(value);
+	@Override
+	public Consumer<SegmentedBuffer> asExpression(int width) {
+		return expr -> expr.putByte(DwarfOp.FBREG).putSignedLeb128(offset);
 	}
 
 }

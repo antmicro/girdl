@@ -179,7 +179,7 @@ public class GirdlAnalyzer extends AbstractAnalyzer {
 		final DataTypeManager manager = program.getDataTypeManager();
 
 		try {
-			type.setCategoryPath(category.getOrCompute(() -> {
+			type.setCategoryPath(category.get(() -> {
 				CategoryPath path = new CategoryPath(CategoryPath.ROOT, "Peripherals");
 
 				if (!manager.containsCategory(path)) {

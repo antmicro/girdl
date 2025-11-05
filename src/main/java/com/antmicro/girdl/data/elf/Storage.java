@@ -15,54 +15,65 @@
  */
 package com.antmicro.girdl.data.elf;
 
-public class Storage {
+import com.antmicro.girdl.data.bin.SegmentedBuffer;
+import com.antmicro.girdl.data.elf.storage.AddressStorage;
+import com.antmicro.girdl.data.elf.storage.ConstStorage;
+import com.antmicro.girdl.data.elf.storage.DynamicStorage;
+import com.antmicro.girdl.data.elf.storage.RegisterStorage;
+import com.antmicro.girdl.data.elf.storage.StackStorage;
+import com.antmicro.girdl.data.elf.storage.StaticStorage;
+import com.antmicro.girdl.data.elf.storage.UnknownStorage;
 
-	public static final Storage UNKNOWN = new Storage(Type.UNKNOWN, 0);
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
 
-	public enum Type {
-		REGISTER(true),
-		STACK(true),
-		ADDRESS(true),
-		CONST(false),
-		UNKNOWN(false);
+public abstract class Storage {
 
-		private final boolean located;
-
-		Type(boolean located) {
-			this.located = located;
-		}
-
-		public boolean hasLocation() {
-			return located;
-		}
+	/**
+	 * Convert to a raw (no header) DWARF expression.
+	 */
+	public Consumer<SegmentedBuffer> asExpression(int width) {
+		throw new RuntimeException("Can't convert to expression!");
 	}
 
-	final Type type;
-	final long offset;
-
-	private Storage(Type type, long offset) {
-		this.type = type;
-		this.offset = offset;
-	}
-
+	/**
+	 * Check if this is not an undefined storage.
+	 */
 	public boolean isKnown() {
-		return type != Type.UNKNOWN;
+		return true;
 	}
 
-	public static Storage ofAddress(long offset) {
-		return new Storage(Type.ADDRESS, offset);
+	public boolean hasLocation() {
+		return false;
 	}
 
-	public static Storage ofStack(long offset) {
-		return new Storage(Type.STACK, offset);
+	public static StaticStorage ofAddress(long address) {
+		return new AddressStorage(address);
 	}
 
-	public static Storage ofRegister(long offset) {
-		return new Storage(Type.REGISTER, offset);
+	public static StaticStorage ofStack(long offset) {
+		return new StackStorage(offset);
 	}
 
-	public static Storage ofConst(long offset) {
-		return new Storage(Type.CONST, offset);
+	public static StaticStorage ofDwarfRegister(long register) {
+		return new RegisterStorage(register);
+	}
+
+	public static StaticStorage ofConst(long value) {
+		return new ConstStorage(value);
+	}
+
+	public static StaticStorage ofUnknown() {
+		return UnknownStorage.INSTANCE;
+	}
+
+	public static Storage ofRanges(DynamicStorage.Range... ranges) {
+		return new DynamicStorage(Arrays.stream(ranges).toList());
+	}
+
+	public static Storage ofRanges(List<DynamicStorage.Range> ranges) {
+		return new DynamicStorage(ranges);
 	}
 
 }

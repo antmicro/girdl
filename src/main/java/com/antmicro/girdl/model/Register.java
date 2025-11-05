@@ -138,7 +138,7 @@ public class Register implements Comparable<Register> {
 	}
 
 	public TypeNode getType() {
-		return type.getOrCompute(this::createFullDataType);
+		return type.get(this::createFullDataType);
 	}
 
 	public String getDescription() {

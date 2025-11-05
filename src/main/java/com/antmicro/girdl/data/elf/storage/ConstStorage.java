@@ -13,35 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.data.elf.storage;
 
-import java.util.Optional;
-import java.util.function.Supplier;
+/**
+ * Represents elements that aren't stored in any memory,
+ * and instead should be treated as named constants.
+ */
+public class ConstStorage extends StaticStorage {
 
-public final class Lazy<T> {
+	public final long value;
 
-	private boolean empty = true;
-	private T value = null;
-
-	public T get(Supplier<T> factory) {
-		if (empty) {
-			value = factory.get();
-			empty = false;
-		}
-
-		return value;
+	public ConstStorage(long offset) {
+		this.value = offset;
 	}
 
-	public void invalidate() {
-		empty = true;
-	}
-
-	public boolean exists() {
-		return !empty;
-	}
-
-	public Optional<T> value() {
-		return empty ? Optional.empty() : Optional.of(value);
+	public boolean hasLocation() {
+		return false;
 	}
 
 }

@@ -13,35 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.data.elf.storage;
 
-import java.util.Optional;
-import java.util.function.Supplier;
+/**
+ * Represents elements we don't know the storage of,
+ * such elements should only be used as fallback.
+ */
+public class UnknownStorage extends StaticStorage {
 
-public final class Lazy<T> {
+	public static final StaticStorage INSTANCE = new UnknownStorage();
 
-	private boolean empty = true;
-	private T value = null;
-
-	public T get(Supplier<T> factory) {
-		if (empty) {
-			value = factory.get();
-			empty = false;
-		}
-
-		return value;
+	private UnknownStorage() {
+		// we need no state here
 	}
 
-	public void invalidate() {
-		empty = true;
+	@Override
+	public boolean hasLocation() {
+		return false;
 	}
 
-	public boolean exists() {
-		return !empty;
-	}
-
-	public Optional<T> value() {
-		return empty ? Optional.empty() : Optional.of(value);
+	@Override
+	public boolean isKnown() {
+		return false;
 	}
 
 }

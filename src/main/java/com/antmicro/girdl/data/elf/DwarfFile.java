@@ -26,6 +26,9 @@ import com.antmicro.girdl.data.elf.enums.DwarfUnit;
 import com.antmicro.girdl.data.elf.enums.ElfSectionFlag;
 import com.antmicro.girdl.data.elf.enums.ElfSectionType;
 import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
+import com.antmicro.girdl.data.elf.storage.AddressStorage;
+import com.antmicro.girdl.data.elf.storage.ConstStorage;
+import com.antmicro.girdl.data.elf.storage.DynamicStorage;
 import com.antmicro.girdl.model.Peripheral;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
@@ -37,6 +40,7 @@ import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.model.type.TypedefNode;
 import com.antmicro.girdl.model.type.UnionNode;
+import com.antmicro.girdl.util.Lazy;
 import com.antmicro.girdl.util.Reflect;
 
 import java.io.File;
@@ -54,7 +58,8 @@ public class DwarfFile extends ElfFile {
 
 	public static final int DWARF_VERSION = 5;
 
-	private LineProgrammer programmer = null;
+	private final Lazy<LineProgrammer> lines = new Lazy<>();
+	private final Lazy<LocationProgrammer> locations = new Lazy<>();
 
 	private int id = 1;
 	private final SegmentedBuffer info;
@@ -67,10 +72,9 @@ public class DwarfFile extends ElfFile {
 	private final int bytes;
 
 	private final HashMap<DwarfAbbreviation, Integer> abbreviations = new HashMap<>();
+	private final Set<Builder> holders = new HashSet<>();
 
 	class Builder {
-
-		private static final Set<Builder> HOLDERS = new HashSet<>();
 
 		private final SegmentedBuffer head;
 		private final SegmentedBuffer body;
@@ -86,7 +90,7 @@ public class DwarfFile extends ElfFile {
 
 			this.tag = tag;
 
-			HOLDERS.add(this);
+			holders.add(this);
 		}
 
 		public Builder withChildren() {
@@ -99,11 +103,11 @@ public class DwarfFile extends ElfFile {
 			try {
 				// throwing in writer aborts the creation of its attribute
 				writer.accept(body);
+				attributes.add(new DwarfAttribute(attribute, format));
 			} catch (RuntimeException e) {
 				return this;
 			}
 
-			attributes.add(new DwarfAttribute(attribute, format));
 			return this;
 		}
 
@@ -122,7 +126,7 @@ public class DwarfFile extends ElfFile {
 
 		public SegmentedBuffer done() {
 			head.putUnsignedLeb128(getOrCreateIdentifier());
-			HOLDERS.remove(this);
+			holders.remove(this);
 			return head;
 		}
 	}
@@ -172,12 +176,24 @@ public class DwarfFile extends ElfFile {
 
 	}
 
+	/**
+	 * Get, or create if not yet used, an object for programming source information into DWARF.
+	 * Mapping of addresses to a source location in DWARF is handled using a pseudo virtual machine, where
+	 * opcodes are defined for specific operations. That program is then interpreted to generate the final mapping table.
+	 * It works like this to save space and allow for easy extensibility.
+	 */
 	public LineProgrammer createLineProgram() {
-		if (programmer == null) {
-			programmer = new LineProgrammer(createSection(".debug_line", ElfSectionType.PROGBITS, ElfSectionFlag.NONE, 1, 0, null), getAddressWidth());
-		}
+		return lines.get(() -> new LineProgrammer(createSection(".debug_line", ElfSectionType.PROGBITS, ElfSectionFlag.NONE, 1, 0, null), getAddressWidth()));
+	}
 
-		return programmer;
+	/**
+	 * Get, or create if not yet used, an object for programming variable location maps into DWARF.
+	 * Each variable can either have a single static storage (register, stack location, etc.) or be
+	 * linked to a location list (one of the lists from .debug_loclists section), that list then
+	 * defined the storage in relation to the program counter, so that the reality of compiler optimization can be expressed.
+	 */
+	public LocationProgrammer createLocationLists() {
+		return locations.get(() -> new LocationProgrammer(createSection(".debug_loclists", ElfSectionType.PROGBITS, ElfSectionFlag.NONE, 1, 0, null), getAddressWidth()));
 	}
 
 	public void createPeripheral(Peripheral peripheral, long offset) {
@@ -192,28 +208,28 @@ public class DwarfFile extends ElfFile {
 	public void createGlobalVariable(TypeNode node, String name, Storage storage) {
 		DataWriter type = createType(node, dies);
 
-		if (storage.type == Storage.Type.ADDRESS) {
-			createSymbol(name, storage.offset, node.size(bytes), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
+		if (storage instanceof AddressStorage where) {
+			createSymbol(name, where.address, node.size(bytes), ElfSymbolFlag.GLOBAL | ElfSymbolFlag.OBJECT, bss);
 		}
 
 		Builder builder = create(DwarfTag.VARIABLE, dies)
 				.add(DwarfAttr.NAME, DwarfForm.STRING, name)
 				.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> type.from(info)));
 
-		if (storage.type.hasLocation()) {
-			builder.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC, expr -> {
-				SegmentedBuffer head = expr.putSegment();
-				SegmentedBuffer body = expr.putSegment();
+		if (storage.hasLocation()) {
+			builder.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC, DwarfExpression.from(expr -> {
 
-				if (storage.type == Storage.Type.ADDRESS) body.putByte(DwarfOp.ADDR).putDynamic(bits, storage.offset);
-				else throw new RuntimeException("Unsupported global variable storage!");
+				if (storage instanceof AddressStorage where) {
+					expr.putByte(DwarfOp.ADDR).putDynamic(bits, where.address);
+					return;
+				}
 
-				head.putUnsignedLeb128(body.size()); // not linked, the size can't change past this point!
-			});
+				throw new RuntimeException("Unsupported global variable storage!");
+			}));
 		}
 
-		if (storage.type == Storage.Type.CONST) {
-			builder.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8, buffer -> buffer.putLong(storage.offset));
+		if (storage instanceof ConstStorage where) {
+			builder.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8, buffer -> buffer.putLong(where.value));
 		}
 
 		builder.done();
@@ -422,13 +438,9 @@ public class DwarfFile extends ElfFile {
 		builder.add(DwarfAttr.NAME, DwarfForm.STRING, type.name);
 		builder.add(DwarfAttr.LOW_PC, DwarfForm.DATA8, buffer -> buffer.putLong(type.low));
 		builder.add(DwarfAttr.HIGH_PC, DwarfForm.DATA8, buffer -> buffer.putLong(type.high));
-		builder.add(DwarfAttr.FRAME_BASE, DwarfForm.EXPRLOC, expr -> {
-			SegmentedBuffer head = expr.putSegment();
-			SegmentedBuffer body = expr.putSegment();
-
-			body.putByte(DwarfOp.CALL_FRAME_CFA);
-			head.putUnsignedLeb128(body.size()); // not linked, the size can't change past this point!
-		});
+		builder.add(DwarfAttr.FRAME_BASE, DwarfForm.EXPRLOC, DwarfExpression.from(expr -> {
+			expr.putByte(DwarfOp.CALL_FRAME_CFA);
+		}));
 
 		if (returnType != null) {
 			builder.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> returnType.from(info)));
@@ -441,30 +453,28 @@ public class DwarfFile extends ElfFile {
 			final DataWriter parameterBuffer = createType(entry.type, dies);
 			final int tag = entry.parameter ? DwarfTag.FORMAL_PARAMETER : DwarfTag.VARIABLE;
 			final Storage storage = entry.storage;
-			final Storage.Type st = storage.type;
 
 			Builder paramBuilder = create(tag, dies)
 					.add(DwarfAttr.NAME, DwarfForm.STRING, entry.name)
 					.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> parameterBuffer.from(info)));
 
-			if (st.hasLocation()) {
-				paramBuilder.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC, expr -> {
+			if (storage.hasLocation()) {
+				if (storage instanceof DynamicStorage where) {
 
-					SegmentedBuffer head = expr.putSegment();
-					SegmentedBuffer body = expr.putSegment();
+					LocationList list = createLocationLists().addLocationSet();
 
-					if (st == Storage.Type.REGISTER) body.putByte(DwarfOp.REGX).putUnsignedLeb128(storage.offset);
-					else if (st == Storage.Type.STACK) body.putByte(DwarfOp.FBREG).putSignedLeb128(storage.offset);
-					else if (st == Storage.Type.ADDRESS) body.putByte(DwarfOp.ADDR).putDynamic(bits, storage.offset);
-					else throw new RuntimeException("Unknown storage!");
+					for (DynamicStorage.Range range : where.ranges) {
+						list.addBounded(range.start, range.end, range.storage.asExpression(getAddressWidth()));
+					}
 
-					head.putUnsignedLeb128(body.size()); // not linked, the size can't change past this point!
-
-				});
+					paramBuilder.add(DwarfAttr.LOCATION, DwarfForm.SEC_OFFSET, buffer -> buffer.putInt(list.offset));
+				} else {
+					paramBuilder.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC, DwarfExpression.from(storage.asExpression(getAddressWidth())));
+				}
 			}
 
-			if (st == Storage.Type.CONST) {
-				paramBuilder.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8, buffer -> buffer.putLong(storage.offset));
+			if (storage instanceof ConstStorage where) {
+				paramBuilder.add(DwarfAttr.CONST_VALUE, DwarfForm.DATA8, buffer -> buffer.putLong(where.value));
 			}
 
 			paramBuilder.done();
@@ -481,8 +491,8 @@ public class DwarfFile extends ElfFile {
 	}
 
 	private void assertNoHolders() {
-		if (!Builder.HOLDERS.isEmpty()) {
-			final String issues = Builder.HOLDERS.stream()
+		if (!holders.isEmpty()) {
+			final String issues = holders.stream()
 					.mapToInt(builder -> builder.tag).distinct()
 					.mapToObj(tag -> Reflect.constValueName(DwarfTag.class, tag))
 					.collect(Collectors.joining(", "));

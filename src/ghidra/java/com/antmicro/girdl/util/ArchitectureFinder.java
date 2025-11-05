@@ -49,7 +49,7 @@ public class ArchitectureFinder {
 	}
 
 	private static Map<String, Integer> getMachineMap() {
-		return LOOKUP.getOrCompute(ArchitectureFinder::createMachineMap);
+		return LOOKUP.get(ArchitectureFinder::createMachineMap);
 	}
 
 	public static /* ElfMachine */ int guessElfMachine(Program program, /* ElfMachine */ int fallback) {

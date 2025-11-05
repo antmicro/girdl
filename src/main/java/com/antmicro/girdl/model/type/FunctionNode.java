@@ -50,7 +50,7 @@ public class FunctionNode extends TypeNode {
 	}
 
 	public void addParameter(String name, TypeNode type) {
-		variables.add(new Variable(name, type, Storage.UNKNOWN, true));
+		variables.add(new Variable(name, type, Storage.ofUnknown(), true));
 	}
 
 	public void addParameter(String name, TypeNode type, Storage storage) {

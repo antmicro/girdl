@@ -13,35 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.data.elf.enums;
 
-import java.util.Optional;
-import java.util.function.Supplier;
+public class DwarfLoc {
 
-public final class Lazy<T> {
-
-	private boolean empty = true;
-	private T value = null;
-
-	public T get(Supplier<T> factory) {
-		if (empty) {
-			value = factory.get();
-			empty = false;
-		}
-
-		return value;
-	}
-
-	public void invalidate() {
-		empty = true;
-	}
-
-	public boolean exists() {
-		return !empty;
-	}
-
-	public Optional<T> value() {
-		return empty ? Optional.empty() : Optional.of(value);
-	}
+	public static final int END_OF_LIST = 0x00;
+	public static final int BASE_ADDRESSX = 0x01;
+	public static final int STARTX_ENDX = 0x02;
+	public static final int STARTX_LENGTH = 0x03;
+	public static final int OFFSET_PAIR = 0x04;
+	public static final int DEFAULT_LOCATION = 0x05;
+	public static final int BASE_ADDRESS = 0x06;
+	public static final int START_END = 0x07;
+	public static final int START_LENGTH = 0x08;
 
 }

@@ -3,12 +3,16 @@ package com.antmicro.girdl.data;
 import com.antmicro.girdl.data.elf.DwarfFile;
 import com.antmicro.girdl.data.elf.ElfFile;
 import com.antmicro.girdl.data.elf.LineProgrammer;
+import com.antmicro.girdl.data.elf.LocationList;
+import com.antmicro.girdl.data.elf.LocationProgrammer;
 import com.antmicro.girdl.data.elf.Storage;
+import com.antmicro.girdl.data.elf.enums.DwarfOp;
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
 import com.antmicro.girdl.data.elf.enums.ElfSectionFlag;
 import com.antmicro.girdl.data.elf.enums.ElfSectionType;
 import com.antmicro.girdl.data.elf.enums.ElfSymbolFlag;
 import com.antmicro.girdl.data.elf.source.SourceFactory;
+import com.antmicro.girdl.data.elf.storage.DynamicStorage;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.FunctionNode;
@@ -554,7 +558,7 @@ public class ElfFileTest {
 		function.setCodeSpan(0x100, 0x200);
 		function.addLocal("a", BaseNode.INT, Storage.ofStack(0));
 		function.addLocal("b", BaseNode.INT, Storage.ofStack(-4));
-		function.addLocal("c", BaseNode.INT, Storage.ofRegister(10));
+		function.addLocal("c", BaseNode.INT, Storage.ofDwarfRegister(10));
 
 		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
 			dwarf.createType(function);
@@ -601,6 +605,89 @@ public class ElfFileTest {
 		Assertions.assertFalse(debug.contains("DW_OP_fbreg"));
 		Assertions.assertTrue(debug.contains("DW_AT_const_value : 0x42"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : c"));
+
+	}
+
+	@Test
+	void testDwarfValidateLocationLists() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		FunctionNode function = FunctionNode.of(BaseNode.LONG, "my_func");
+		function.setCodeSpan(0x100, 0x200);
+		function.addParameter("c", BaseNode.INT, Storage.ofRanges(
+				DynamicStorage.newRange(0x200, 0x150, Storage.ofStack(10))
+		));
+
+		Assertions.assertThrows(RuntimeException.class, () -> {
+
+			try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+				dwarf.createType(function);
+			}
+
+		});
+
+	}
+
+	@Test
+	void testDwarfLocatedFunction() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		FunctionNode function = FunctionNode.of(BaseNode.LONG, "my_func");
+		function.setCodeSpan(0x100, 0x200);
+		function.addLocal("c", BaseNode.INT, Storage.ofRanges(
+				DynamicStorage.newRange(0x100, 0x150, Storage.ofDwarfRegister(0)),
+				DynamicStorage.newRange(0x150, 0x200, Storage.ofDwarfRegister(1))
+		));
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			dwarf.createType(function);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("0000000000000100 0000000000000150 (DW_OP_regx: 0 (rax))"));
+		Assertions.assertTrue(debug.contains("0000000000000150 0000000000000200 (DW_OP_regx: 1 (rdx))"));
+		Assertions.assertTrue(debug.contains("<End of list>"));
+
+		Assertions.assertTrue(debug.contains("DW_TAG_variable"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : c"));
+		Assertions.assertTrue(debug.contains("DW_AT_location     DW_FORM_sec_offset"));
+		Assertions.assertTrue(debug.contains("DW_AT_location    : 0xc (location list"));
+
+	}
+
+	@Test
+	void testDwarfLocatedParameterFunction() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		FunctionNode function = FunctionNode.of(BaseNode.LONG, "my_func");
+		function.setCodeSpan(0x100, 0x200);
+		function.addParameter("c", BaseNode.INT, Storage.ofRanges(
+				DynamicStorage.newRange(0x100, 0x150, Storage.ofStack(10))
+		));
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			dwarf.createType(function);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("0000000000000100 0000000000000150 (DW_OP_fbreg: 10)"));
+		Assertions.assertTrue(debug.contains("<End of list>"));
+
+		Assertions.assertTrue(debug.contains("DW_TAG_formal_parameter"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : c"));
+		Assertions.assertTrue(debug.contains("DW_AT_location     DW_FORM_sec_offset"));
+		Assertions.assertTrue(debug.contains("DW_AT_location    : 0xc (location list"));
 
 	}
 

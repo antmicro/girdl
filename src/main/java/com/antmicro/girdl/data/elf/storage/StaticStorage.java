@@ -13,35 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.data.elf.storage;
 
-import java.util.Optional;
-import java.util.function.Supplier;
+import com.antmicro.girdl.data.elf.Storage;
 
-public final class Lazy<T> {
+/**
+ * Represents elements whose storage doesn't change during program execution,
+ * that is, their location doesn't depend on the program counter.
+ */
+public abstract class StaticStorage extends Storage {
 
-	private boolean empty = true;
-	private T value = null;
-
-	public T get(Supplier<T> factory) {
-		if (empty) {
-			value = factory.get();
-			empty = false;
-		}
-
-		return value;
-	}
-
-	public void invalidate() {
-		empty = true;
-	}
-
-	public boolean exists() {
-		return !empty;
-	}
-
-	public Optional<T> value() {
-		return empty ? Optional.empty() : Optional.of(value);
+	@Override
+	public boolean hasLocation() {
+		return true;
 	}
 
 }

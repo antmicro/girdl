@@ -23,9 +23,7 @@ import com.antmicro.girdl.data.elf.source.SourceFactory;
 
 import java.util.HashMap;
 
-public class LineProgrammer {
-
-	public static final int DWARF_VERSION = 5;
+public final class LineProgrammer extends Programmer {
 
 	public static final int BYTES_PER_INSTRUCTION = 1;
 	public static final int MAX_VLIW_OPERATIONS_PER_INSTRUCTION = 1;
@@ -34,26 +32,15 @@ public class LineProgrammer {
 	private long address = 0;
 	private long line = 1;
 
-	private final SegmentedBuffer head;
-	private final SegmentedBuffer body;
-
 	private final SegmentedBuffer directoryCount;
 	private final SegmentedBuffer directoryList;
 	private final SegmentedBuffer fileCount;
 	private final SegmentedBuffer fileList;
 
-	private HashMap<String, Integer> files = new HashMap<>();
+	private final HashMap<String, Integer> files = new HashMap<>();
 
-	public LineProgrammer(SegmentedBuffer writer, int addressWidth) {
-		SegmentedBuffer section = writer.putSegment();
-		this.head = section.putSegment().setName("header");
-		this.body = section.putSegment().setName("data");
-
-		// see specification 6.2.4
-		head.putInt(() -> section.size() - 4); // length (excluding the length field itself)
-		head.putShort(DWARF_VERSION); // section version
-		head.putByte(addressWidth); // address (pointer) width
-		head.putByte(0); // segment selector size (if present)
+	LineProgrammer(SegmentedBuffer writer, int addressWidth) {
+		super(writer, addressWidth);
 
 		SegmentedBuffer length = head.putSegment();
 		SegmentedBuffer cont = head.putSegment();

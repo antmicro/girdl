@@ -145,7 +145,7 @@ public class GirdlTypeAdapter {
 
 				for (ParameterDefinition parameter : function.getArguments()) {
 					TypeNode varType = adaptToTypeNode(parameter.getDataType());
-					node.addParameter(parameter.getName(), varType, Storage.UNKNOWN);
+					node.addParameter(parameter.getName(), varType, Storage.ofUnknown());
 				}
 
 				return node;
