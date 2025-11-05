@@ -53,7 +53,7 @@ public final class DwarfExporter extends DwarfFile {
 
 			GhidraGlobalDecompiler decompiler = new GhidraGlobalDecompiler(program);
 
-			SourceFactory source = decompiler.dump(adapter);
+			SourceFactory source = decompiler.dump(adapter, offset);
 			source.saveSource(dwarf.getAbsolutePath() + ".c");
 
 			LineProgrammer programmer = exporter.createLineProgram();
@@ -180,6 +180,7 @@ public final class DwarfExporter extends DwarfFile {
 			if (node instanceof FunctionNode functionNode) {
 
 				provider.getFunctionDetails(function).ifPresent(info -> {
+					functionNode.variables.clear();
 					functionNode.variables.addAll(info.locals);
 					exportedVariables.value = true;
 				});

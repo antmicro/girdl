@@ -18,6 +18,8 @@ package com.antmicro.girdl;
 import com.antmicro.girdl.adapter.GirdlTypeAdapter;
 import com.antmicro.girdl.data.elf.Storage;
 import com.antmicro.girdl.data.elf.source.SourceFactory;
+import com.antmicro.girdl.data.elf.storage.DynamicStorage;
+import com.antmicro.girdl.data.elf.storage.StaticStorage;
 import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.util.DwarfRegistryResolver;
 import com.antmicro.girdl.util.FunctionDetailProvider;
@@ -52,7 +54,7 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 		this.program = program;
 	}
 
-	public SourceFactory dump(GirdlTypeAdapter adapter) {
+	public SourceFactory dump(GirdlTypeAdapter adapter, long offset) {
 
 		DwarfRegistryResolver registers = new DwarfRegistryResolver(program.getLanguage());
 		SourceFactory source = new SourceFactory();
@@ -82,7 +84,11 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 			// add a bit of spacing to make the source more readable
 			source.addEmpty();
 			source.addEmpty();
-			String where = "0x" + Long.toHexString(function.getEntryPoint().getOffset());
+
+			final long functionStartAddress = function.getEntryPoint().getOffset();
+			final long functionEndAddress = functionStartAddress + function.getBody().getNumAddresses();
+
+			String where = "0x" + Long.toHexString(functionStartAddress);
 
 			if (!res.decompileCompleted()) {
 				source.addLine("// Failed to decompile " + where + ": " + res.getErrorMessage());
@@ -92,24 +98,37 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 			final LocalSymbolMap map = res.getHighFunction().getLocalSymbolMap();
 			final List<FunctionNode.Variable> locals = new ArrayList<>();
 
+			final Map<Address, Long> initial = PcodeUtils.toVarnodeWriteMap(res.getHighFunction().getPcodeOps());
+
 			map.getSymbols().forEachRemaining(symbol -> {
 
 				for (Varnode varnode : symbol.getStorage().getVarnodes()) {
 
 					final Address address = varnode.getAddress();
-					final Storage storage;
+					final StaticStorage varnodeStorage;
 
 					if (varnode.isConstant()) {
-						storage = Storage.ofConst(varnode.getOffset());
+						varnodeStorage = Storage.ofConst(varnode.getOffset());
 					} else if (varnode.isRegister()) {
-						storage = Storage.ofDwarfRegister(registers.getDwarfRegister(program.getRegister(varnode)));
+						varnodeStorage = Storage.ofDwarfRegister(registers.getDwarfRegister(program.getRegister(varnode)));
 					} else if (address.isStackAddress()) {
-						storage = Storage.ofStack(address.getOffset() - address.getPointerSize());
+						varnodeStorage = Storage.ofStack(address.getOffset() - address.getPointerSize());
 					} else {
 
 						// unsupported storage, completely skip this variable from output
 						Logger.warn(this, "Unknown storage for varnode " + symbol.getName() + ": " + varnode + ", from function '" + function.getName() + "'");
 						continue;
+					}
+
+					Storage storage = varnodeStorage;
+
+					// make locals only visible after their value is written for the first time
+					if (!symbol.isParameter()) {
+						Long firstAssignment = initial.get(varnode.getAddress());
+
+						if (firstAssignment != null) {
+							storage = Storage.ofRanges(DynamicStorage.newRange(firstAssignment + offset, functionEndAddress + offset, varnodeStorage));
+						}
 					}
 
 					locals.add(new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), storage, symbol.isParameter()));

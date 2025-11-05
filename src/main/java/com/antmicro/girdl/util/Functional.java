@@ -20,8 +20,10 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class Functional {
@@ -93,6 +95,16 @@ public final class Functional {
 		} catch (Throwable t) {
 			return Optional.empty();
 		}
+	}
+
+	/**
+	 * Inverts the keys and values in a map, creating a new immutable map.
+	 *
+	 * @param map the map to invert
+	 * @return a map with values for keys, and keys for values
+	 */
+	public static <A, B> Map<B, A> invert(Map<A, B> map) {
+		return  map.entrySet().stream().collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
 	}
 
 }
