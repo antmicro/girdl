@@ -127,7 +127,7 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 						Long firstAssignment = initial.get(varnode.getAddress());
 
 						if (firstAssignment != null) {
-							storage = Storage.ofRanges(DynamicStorage.newRange(firstAssignment + offset, functionEndAddress + offset, varnodeStorage));
+							storage = Storage.ofRanges(DynamicStorage.newRange(firstAssignment + offset + 1, functionEndAddress + offset, varnodeStorage));
 						}
 					}
 
@@ -149,31 +149,43 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 	private void appendSource(SourceFactory source, DecompileResults result) {
 
 		StringBuilder line = new StringBuilder();
-		long offset = result.getFunction().getEntryPoint().getOffset();
+
+		boolean first = true;
+		long prevOffset = 0;
+		long nextOffset = result.getFunction().getEntryPoint().getOffset();
 
 		List<ClangNode> tokens = new ArrayList<>();
 		result.getCCodeMarkup().flatten(tokens);
 
 		for (ClangNode node : tokens) {
 			line.append(node.toString());
+			Address address = node.getMinAddress();
+
+			if (address != null) {
+				long offset = address.getOffset();
+
+				// we want to only select the address if we have nothing yet (first), of we found an
+				// earlier address, that can occur at any point so we must be ready to go back.
+				if (offset > prevOffset) {
+					if (first || (offset < nextOffset)) {
+						nextOffset = offset;
+						first = false;
+					}
+				}
+			}
 
 			if (node instanceof ClangBreak breakNode) {
 				if (line.isEmpty()) {
 					continue;
 				}
 
-				source.addLine(line.toString(), offset);
+				source.addLine(line.toString(), nextOffset);
+				prevOffset = nextOffset;
+				first = true;
 
 				line.setLength(0);
 				line.repeat("  ", breakNode.getIndent());
 			}
-
-			Address address = node.getMinAddress();
-
-			if (address != null) {
-				offset = address.getOffset();
-			}
-
 		}
 	}
 
