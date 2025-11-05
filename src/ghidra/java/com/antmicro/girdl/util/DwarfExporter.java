@@ -91,8 +91,6 @@ public final class DwarfExporter extends DwarfFile {
 
 	public void createDebugFromProgram(Program program, long offset, FunctionDetailProvider provider, GirdlTypeAdapter adapter) {
 
-		Mutable<Boolean> exportedVariables = Mutable.wrap(false);
-
 		final Function<Object, TypeNode> converter = adapter.getTypeConverter();
 
 		/*
@@ -182,7 +180,6 @@ public final class DwarfExporter extends DwarfFile {
 				provider.getFunctionDetails(function).ifPresent(info -> {
 					functionNode.variables.clear();
 					functionNode.variables.addAll(info.locals);
-					exportedVariables.value = true;
 				});
 
 				long start = address.getOffset() + offset;
@@ -194,11 +191,6 @@ public final class DwarfExporter extends DwarfFile {
 				createType(functionNode);
 			}
 		}
-
-		if (exportedVariables.value) {
-			Msg.showWarn(this, null, "No CFA Table", "Function variables were exported and should work, but as CFA table generation is not supported the variables can (and will!) desynchronize during function execution. Use with caution!");
-		}
-
 	}
 
 }
