@@ -33,6 +33,7 @@ import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.util.HelpLocation;
 
 import java.io.File;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @PluginInfo(
@@ -74,8 +75,8 @@ public class GirdlPlugin extends ProgramPlugin {
 
 			}
 
-			private long askForEntryPoint() {
-				EntrypointChooser chooser = new EntrypointChooser(currentProgram);
+			private Optional<Long> askForEntryPoint() {
+				EntrypointChooser chooser = new EntrypointChooser();
 				tool.showDialog(chooser);
 
 				return chooser.getEntrypointAddress();
@@ -89,16 +90,20 @@ public class GirdlPlugin extends ProgramPlugin {
 					return;
 				}
 
-				long entrypoint = askForEntryPoint();
+				var entrypoint = askForEntryPoint();
 				Stopwatch stopwatch = Stopwatch.createStarted();
 
+				if (entrypoint.isEmpty()) {
+					Logger.info(this, "Operation aborted, no mount point selected");
+					return;
+				}
+
 				try {
-					DwarfExporter.dumpProgramDebugInfo(file, currentProgram, entrypoint);
+					DwarfExporter.dumpProgramDebugInfo(file, currentProgram, entrypoint.orElseThrow());
+					Logger.info(this, "Finished writing DWARF data in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
 				} catch (Exception e) {
 					Logger.error(this, "Can't write to '" + file.getPath() + "': " + e.getMessage());
 				}
-
-				Logger.info(this, "Finished writing DWARF data in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
 			}
 
 			@Override
