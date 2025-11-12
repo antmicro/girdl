@@ -15,6 +15,8 @@
  */
 package com.antmicro.girdl.data.elf.enums;
 
+import java.util.Optional;
+
 public class DwarfOp {
 
 	public static final int ADDR = 0x03; // 1 op, constant address (size is target specific)
@@ -61,6 +63,9 @@ public class DwarfOp {
 	public static final int NE = 0x2e; // 0 ops
 	public static final int SKIP = 0x2f; // 1 op, signed 2-byte constant
 
+	public static final int LIT0 = 0x30;
+	public static final int LIT31 = 0x4f;
+
 	public static final int REG0 = 0x50; // 0 ops
 	public static final int REG31 = 0x6f; // 0 ops
 	public static final int BREG0 = 0x70; // 1 op, SLEB128 offset
@@ -96,5 +101,19 @@ public class DwarfOp {
 	public static final int XDEREF_TYPE = 0xa7; // 2 ops, 1-byte size, ULEB128 type entry offset
 	public static final int CONVERT = 0xa8; // 1 ops, ULEB128 type entry offset
 	public static final int REINTERPRET = 0xa9; // 1 ops, ULEB128 type entry offset
+
+	/*
+	 * Helpers
+	 */
+
+	public static Optional<Long> register(long registerNumber) {
+		final long opcode = REG0 + registerNumber;
+		return opcode > REG31 ? Optional.empty() : Optional.of(opcode);
+	}
+
+	public static Optional<Long> literal(long literalNumber) {
+		final long opcode = LIT0 + literalNumber;
+		return opcode > LIT31 ? Optional.empty() : Optional.of(opcode);
+	}
 
 }

@@ -15,6 +15,11 @@
  */
 package com.antmicro.girdl.data.elf.storage;
 
+import com.antmicro.girdl.data.bin.SegmentedBuffer;
+import com.antmicro.girdl.data.elf.enums.DwarfOp;
+
+import java.util.function.Consumer;
+
 /**
  * Represents elements that aren't stored in any memory,
  * and instead should be treated as named constants.
@@ -29,6 +34,14 @@ public class ConstStorage extends StaticStorage {
 
 	public boolean hasLocation() {
 		return false;
+	}
+
+	@Override
+	public Consumer<SegmentedBuffer> asExpression(int width) {
+		return (DwarfOp.literal(value)
+				.<Consumer<SegmentedBuffer>>map(aLong -> expr -> expr.putByte(aLong))
+				.orElseGet(() -> expr -> expr.putByte(DwarfOp.CONSTU).putUnsignedLeb128(value)))
+				.andThen(expr -> expr.putByte(DwarfOp.STACK_VALUE));
 	}
 
 }

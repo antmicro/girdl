@@ -35,7 +35,6 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Equate;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolIterator;
-import ghidra.util.Msg;
 
 import java.io.File;
 import java.util.Iterator;

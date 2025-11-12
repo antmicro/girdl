@@ -47,7 +47,7 @@ public class LocationList {
 	public void addBounded(long start, long end, Consumer<SegmentedBuffer> writer) {
 
 		if (start > end) {
-			throw new RuntimeException("Invalid bound address descriptor, the range ends before it starts!");
+			throw new RuntimeException("Invalid bound address descriptor, the range ends (" + Long.toHexString(end) + ") before it starts (" + Long.toHexString(start) + ")!");
 		}
 
 		final long length = end - start;

@@ -34,7 +34,9 @@ public class RegisterStorage extends StaticStorage {
 
 	@Override
 	public Consumer<SegmentedBuffer> asExpression(int width) {
-		return expr -> expr.putByte(DwarfOp.REGX).putUnsignedLeb128(register);
+		return DwarfOp.register(register)
+				.<Consumer<SegmentedBuffer>>map(opcode -> expr -> expr.putByte(opcode))
+				.orElseGet(() -> expr -> expr.putByte(DwarfOp.REGX).putUnsignedLeb128(register));
 	}
 
 }

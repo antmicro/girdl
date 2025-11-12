@@ -572,7 +572,7 @@ public class ElfFileTest {
 		Assertions.assertTrue(debug.contains("DW_TAG_variable"));
 		Assertions.assertTrue(debug.contains("DW_OP_fbreg: 0"));
 		Assertions.assertTrue(debug.contains("DW_OP_fbreg: -4"));
-		Assertions.assertTrue(debug.contains("DW_OP_regx: 10"));
+		Assertions.assertTrue(debug.contains("DW_OP_reg10"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : a"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : b"));
 		Assertions.assertTrue(debug.contains("DW_AT_name        : c"));
@@ -650,8 +650,8 @@ public class ElfFileTest {
 		Assertions.assertFalse(all.contains("Warning"));
 
 		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
-		Assertions.assertTrue(debug.contains("0000000000000100 0000000000000150 (DW_OP_regx: 0 (rax))"));
-		Assertions.assertTrue(debug.contains("0000000000000150 0000000000000200 (DW_OP_regx: 1 (rdx))"));
+		Assertions.assertTrue(debug.contains("0000000000000100 0000000000000150 (DW_OP_reg0 (rax))"));
+		Assertions.assertTrue(debug.contains("0000000000000150 0000000000000200 (DW_OP_reg1 (rdx))"));
 		Assertions.assertTrue(debug.contains("<End of list>"));
 
 		Assertions.assertTrue(debug.contains("DW_TAG_variable"));

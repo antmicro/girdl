@@ -18,7 +18,6 @@ package com.antmicro.girdl;
 import com.antmicro.girdl.adapter.GirdlTypeAdapter;
 import com.antmicro.girdl.data.elf.Storage;
 import com.antmicro.girdl.data.elf.source.SourceFactory;
-import com.antmicro.girdl.data.elf.storage.DynamicStorage;
 import com.antmicro.girdl.data.elf.storage.StaticStorage;
 import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.util.DwarfRegistryResolver;
@@ -47,6 +46,7 @@ import java.util.Optional;
 
 public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 
+	private boolean debugPrintPCode = false;
 	private final Program program;
 	private final Map<Function, FunctionInfo> functions = new HashMap<>();
 
@@ -95,10 +95,13 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 				continue;
 			}
 
+			if (debugPrintPCode) {
+				PcodeUtils.dump(res.getHighFunction());
+			}
+
 			final LocalSymbolMap map = res.getHighFunction().getLocalSymbolMap();
 			final List<FunctionNode.Variable> locals = new ArrayList<>();
-
-			final Map<Address, Long> initial = PcodeUtils.toVarnodeWriteMap(res.getHighFunction().getPcodeOps());
+			final var initials = PcodeUtils.toVarnodeRangeMap(res.getHighFunction().getPcodeOps());
 
 			map.getSymbols().forEachRemaining(symbol -> {
 
@@ -120,16 +123,8 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 						continue;
 					}
 
-					Storage storage = varnodeStorage;
-
-					// make locals only visible after their value is written for the first time
-					if (!symbol.isParameter()) {
-						Long firstAssignment = initial.get(varnode.getAddress());
-
-						if (firstAssignment != null) {
-							storage = Storage.ofRanges(DynamicStorage.newRange(firstAssignment + offset + 1, functionEndAddress + offset, varnodeStorage));
-						}
-					}
+					var range = initials.getRangeFor(varnode.getAddress()).orElse(PcodeUtils.INVARIANT);
+					Storage storage = range.wrap(symbol, varnodeStorage, functionStartAddress, functionEndAddress, offset);
 
 					locals.add(new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), storage, symbol.isParameter()));
 
@@ -194,6 +189,13 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 		final FunctionInfo info = functions.get(ghidraFunction);
 		Logger.info(this, "Requested details for function: '" + ghidraFunction.getName() + "', " + (info == null ? "no data available" : "found " + info.locals.size() + " local variables"));
 		return Optional.ofNullable(info);
+	}
+
+	/**
+	 * Enable debug printing of PCode for each decompiled function.
+	 */
+	public void enablePCodePrinter() {
+		this.debugPrintPCode = true;
 	}
 
 }
