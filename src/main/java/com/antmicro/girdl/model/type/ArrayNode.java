@@ -53,4 +53,8 @@ public class ArrayNode extends TypeNode {
 		return adapter.adaptArray(this);
 	}
 
+	@Override
+	public boolean isPeripheral() {
+		return element.isPeripheral();
+	}
 }

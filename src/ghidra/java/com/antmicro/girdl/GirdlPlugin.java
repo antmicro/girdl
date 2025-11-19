@@ -15,7 +15,9 @@
  */
 package com.antmicro.girdl;
 
-import com.antmicro.girdl.util.DwarfExporter;
+import com.antmicro.girdl.export.DwarfExportConfig;
+import com.antmicro.girdl.export.DwarfExportConfigProvider;
+import com.antmicro.girdl.export.DwarfExporter;
 import com.antmicro.girdl.util.GhidraFile;
 import com.antmicro.girdl.util.log.Logger;
 import com.google.common.base.Stopwatch;
@@ -75,11 +77,11 @@ public class GirdlPlugin extends ProgramPlugin {
 
 			}
 
-			private Optional<Long> askForEntryPoint() {
-				EntrypointChooser chooser = new EntrypointChooser();
+			private Optional<DwarfExportConfig> askForDwarfConfig() {
+				DwarfExportConfigProvider chooser = new DwarfExportConfigProvider();
 				tool.showDialog(chooser);
 
-				return chooser.getEntrypointAddress();
+				return chooser.getDwarfConfig();
 			}
 
 			@Override
@@ -90,16 +92,16 @@ public class GirdlPlugin extends ProgramPlugin {
 					return;
 				}
 
-				var entrypoint = askForEntryPoint();
+				var optional = askForDwarfConfig();
 				Stopwatch stopwatch = Stopwatch.createStarted();
 
-				if (entrypoint.isEmpty()) {
-					Logger.info(this, "Operation aborted, no mount point selected");
+				if (optional.isEmpty()) {
+					Logger.info(this, "Operation aborted");
 					return;
 				}
 
 				try {
-					DwarfExporter.dumpProgramDebugInfo(file, currentProgram, entrypoint.orElseThrow());
+					DwarfExporter.dumpProgramDebugInfo(file, currentProgram, optional.get());
 					Logger.info(this, "Finished writing DWARF data in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
 				} catch (Exception e) {
 					Logger.error(this, "Can't write to '" + file.getPath() + "': " + e.getMessage());

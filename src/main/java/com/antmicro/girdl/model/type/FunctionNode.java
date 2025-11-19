@@ -121,6 +121,10 @@ public class FunctionNode extends TypeNode {
 			return false;
 		}
 
+		public boolean filter(boolean parameter, boolean variable) {
+			return (this.parameter && parameter) || (!this.parameter && variable);
+		}
+
 	}
 
 }

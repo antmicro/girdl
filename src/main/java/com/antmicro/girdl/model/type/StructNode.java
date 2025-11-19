@@ -26,7 +26,8 @@ public class StructNode extends TypeNode {
 	///  Prefix used to mark inline definitions
 	public static final String INLINE_SUFFIX = "_inline";
 
-	public boolean anonymous;
+	private boolean peripheral;
+	private boolean anonymous;
 	public final String name;
 	public List<Entry> fields = new ArrayList<>();
 	private int fixedSizeBytes;
@@ -98,8 +99,18 @@ public class StructNode extends TypeNode {
 		return this;
 	}
 
+	public StructNode markPeripheral() {
+		this.peripheral = true;
+		return this;
+	}
+
 	public boolean isAnonymous() {
 		return anonymous;
+	}
+
+	@Override
+	public boolean isPeripheral() {
+		return peripheral;
 	}
 
 	public boolean isFixedSize() {

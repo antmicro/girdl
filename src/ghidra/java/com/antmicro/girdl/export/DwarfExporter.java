@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.export;
 
-import com.antmicro.girdl.GhidraGlobalDecompiler;
 import com.antmicro.girdl.adapter.GirdlTypeAdapter;
 import com.antmicro.girdl.data.elf.DwarfFile;
 import com.antmicro.girdl.data.elf.LineProgrammer;
@@ -25,6 +24,7 @@ import com.antmicro.girdl.data.elf.source.SourceFactory;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.model.type.TypeNode;
+import com.antmicro.girdl.util.FunctionDetailProvider;
 import com.antmicro.girdl.util.log.Logger;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
@@ -35,6 +35,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Equate;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolIterator;
+import ghidra.util.Msg;
 
 import java.io.File;
 import java.util.Iterator;
@@ -46,25 +47,39 @@ public final class DwarfExporter extends DwarfFile {
 		super(file, ArchitectureFinder.guessElfMachine(program, ElfMachine.NONE), program.getDefaultPointerSize() * 8);
 	}
 
-	public static void dumpProgramDebugInfo(File dwarf, Program program, long offset) {
+	public static void dumpProgramDebugInfo(File dwarf, Program program, DwarfExportConfig config) {
+
+		Logger.info(DwarfExporter.class, "Running DWARF export with config: " + config.toString());
+
+		// Most likely not what the user wanted, but no reason to abort now, this will be very fast anyway.
+		if (config.isEmpty()) {
+			Msg.showWarn(DwarfExporter.class, null, "DWARF Export", "Exporting an empty DWARF as all data sources are disabled!");
+		}
+
 		try (DwarfExporter exporter = new DwarfExporter(dwarf, program)) {
 			GirdlTypeAdapter adapter = new GirdlTypeAdapter();
 
 			GhidraGlobalDecompiler decompiler = new GhidraGlobalDecompiler(program, adapter);
 
-			SourceFactory source = decompiler.dump(offset);
-			source.saveSource(dwarf.getAbsolutePath() + ".c");
+			if (config.shouldRunDecompiler()) {
+				Logger.info(decompiler, "Running decompiler for all known functions");
+				SourceFactory source = decompiler.dump(config);
 
-			LineProgrammer programmer = exporter.createLineProgram();
-			int dir = programmer.addDirectory("./");
-			programmer.setFile(dir, dwarf.getName() + ".c");
-			programmer.setColumn(1);
+				if (config.source) {
+					source.saveSource(dwarf.getAbsolutePath() + ".c");
 
-			programmer.encodeSource(source, offset);
-			programmer.advanceAddress(1);
-			programmer.endSequence();
+					LineProgrammer programmer = exporter.createLineProgram();
+					int dir = programmer.addDirectory("./");
+					programmer.setFile(dir, dwarf.getName() + ".c");
+					programmer.setColumn(1);
 
-			exporter.createDebugFromProgram(program, offset, decompiler, adapter);
+					programmer.encodeSource(source, config.address);
+					programmer.advanceAddress(1);
+					programmer.endSequence();
+				}
+			}
+
+			exporter.createDebugFromProgram(program, config, decompiler, adapter);
 		}
 	}
 
@@ -88,7 +103,7 @@ public final class DwarfExporter extends DwarfFile {
 
 	}
 
-	public void createDebugFromProgram(Program program, long offset, FunctionDetailProvider provider, GirdlTypeAdapter adapter) {
+	public void createDebugFromProgram(Program program, DwarfExportConfig config, FunctionDetailProvider provider, GirdlTypeAdapter adapter) {
 
 		final Function<Object, TypeNode> converter = adapter.getTypeConverter();
 
@@ -97,15 +112,17 @@ public final class DwarfExporter extends DwarfFile {
 		 * not all of them will have a symbol but there is no reason to omit those.
 		 */
 
-		Iterator<DataType> types = program.getDataTypeManager().getAllDataTypes();
+		if (config.types) {
+			Iterator<DataType> types = program.getDataTypeManager().getAllDataTypes();
 
-		while (types.hasNext()) {
-			createType(converter.apply(types.next()));
+			while (types.hasNext()) {
+				createType(converter.apply(types.next()));
+			}
 		}
 
 		/*
 		 * Next, we add all symbols (global variables, etc.) and their types (if
-		 * not yet seen before), we do hover skip some of them, mainly assembly labels (by
+		 * not yet seen before), we do however skip some of them, mainly assembly labels (by
 		 * the fact they have a null type).
 		 */
 
@@ -127,7 +144,9 @@ public final class DwarfExporter extends DwarfFile {
 				continue;
 			}
 
-			createGlobalVariable(type, symbol.getName(), Storage.ofAddress(address.getOffset() + offset));
+			if (config.shouldExportSymbol(type)) {
+				createGlobalVariable(type, symbol.getName(), Storage.ofAddress(address.getOffset() + config.address));
+			}
 		}
 
 		/*
@@ -136,11 +155,13 @@ public final class DwarfExporter extends DwarfFile {
 		 * the equated value turns to a use of the equate).
 		 */
 
-		Iterator<Equate> equates = program.getEquateTable().getEquates();
+		if (config.equates) {
+			Iterator<Equate> equates = program.getEquateTable().getEquates();
 
-		while (equates.hasNext()) {
-			Equate equate = equates.next();
-			createGlobalVariable(BaseNode.LONG, equate.getName(), Storage.ofConst(equate.getValue()));
+			while (equates.hasNext()) {
+				Equate equate = equates.next();
+				createGlobalVariable(BaseNode.LONG, equate.getName(), Storage.ofConst(equate.getValue()));
+			}
 		}
 
 		/*
@@ -176,12 +197,16 @@ public final class DwarfExporter extends DwarfFile {
 			// but we need to cast and verify if it is null anyway
 			if (node instanceof FunctionNode functionNode) {
 
+				if (!config.shouldExportSymbol(functionNode)) {
+					continue;
+				}
+
 				provider.getFunctionDetails(function).ifPresent(info -> {
 					functionNode.variables.clear();
-					functionNode.variables.addAll(info.locals);
+					info.locals.stream().filter(local -> local.filter(config.parameters, config.variables)).forEach(functionNode.variables::add);
 				});
 
-				long start = address.getOffset() + offset;
+				long start = address.getOffset() + config.address;
 				long end = start + function.getBody().getNumAddresses();
 
 				// without specifying the range debuggers will ignore this function

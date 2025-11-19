@@ -54,4 +54,10 @@ public class PointerNode extends TypeNode {
 	public int hashCode() {
 		return 11 * reference.hashCode() + 97;
 	}
+
+	@Override
+	public boolean isPeripheral() {
+		return reference.isPeripheral();
+	}
+
 }

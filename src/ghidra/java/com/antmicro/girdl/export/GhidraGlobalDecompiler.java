@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl;
+package com.antmicro.girdl.export;
 
 import com.antmicro.girdl.adapter.GirdlTypeAdapter;
 import com.antmicro.girdl.data.elf.Storage;
@@ -146,8 +146,9 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 
 	}
 
-	public SourceFactory dump(long offset) {
+	public SourceFactory dump(DwarfExportConfig config) {
 
+		final long offset = config.address;
 		functions.clear();
 
 		SourceFactory source = new SourceFactory();

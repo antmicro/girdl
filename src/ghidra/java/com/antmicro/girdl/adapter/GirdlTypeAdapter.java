@@ -16,6 +16,7 @@
 package com.antmicro.girdl.adapter;
 
 import com.antmicro.girdl.data.elf.Storage;
+import com.antmicro.girdl.export.DwarfExporter;
 import com.antmicro.girdl.model.type.ArrayNode;
 import com.antmicro.girdl.model.type.BaseNode;
 import com.antmicro.girdl.model.type.FunctionNode;
@@ -24,7 +25,6 @@ import com.antmicro.girdl.model.type.PointerNode;
 import com.antmicro.girdl.model.type.StructNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.model.type.UnionNode;
-import com.antmicro.girdl.util.DwarfExporter;
 import com.antmicro.girdl.util.Mutable;
 import com.antmicro.girdl.util.log.Logger;
 import ghidra.program.model.data.Array;
@@ -85,6 +85,10 @@ public class GirdlTypeAdapter {
 
 				StructNode node = StructNode.of(mapper.adaptName(name));
 				nodes.put(type, node);
+
+				if (structure.getCategoryPath().getName().toLowerCase().contains("peripheral")) {
+					node.markPeripheral();
+				}
 
 				if (name.endsWith(StructNode.INLINE_SUFFIX)) {
 					node.markAnonymous();

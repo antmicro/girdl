@@ -54,4 +54,9 @@ public class TypedefNode extends TypeNode {
 
 		return false;
 	}
+
+	@Override
+	public boolean isPeripheral() {
+		return underlying.isPeripheral();
+	}
 }

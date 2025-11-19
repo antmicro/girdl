@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.antmicro.girdl.util;
+package com.antmicro.girdl.export;
 
 import com.antmicro.girdl.data.elf.enums.ElfMachine;
+import com.antmicro.girdl.util.Lazy;
+import com.antmicro.girdl.util.Reflect;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
 

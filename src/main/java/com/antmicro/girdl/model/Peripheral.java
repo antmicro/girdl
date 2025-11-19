@@ -68,7 +68,7 @@ public class Peripheral {
 		List<Register> sorted = registers.stream().sorted().toList();
 		tryDeducingMissingRegisterSizes(sorted);
 
-		type = StructNode.of(name);
+		type = StructNode.of(name).markPeripheral();
 		int offset = 0;
 		Register previous = null;
 
