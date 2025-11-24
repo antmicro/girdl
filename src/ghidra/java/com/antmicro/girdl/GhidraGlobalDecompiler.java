@@ -20,6 +20,7 @@ import com.antmicro.girdl.data.elf.Storage;
 import com.antmicro.girdl.data.elf.source.SourceFactory;
 import com.antmicro.girdl.data.elf.storage.StaticStorage;
 import com.antmicro.girdl.model.type.FunctionNode;
+import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.util.DwarfRegistryResolver;
 import com.antmicro.girdl.util.FunctionDetailProvider;
 import com.antmicro.girdl.util.log.Logger;
@@ -32,6 +33,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionIterator;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.pcode.HighSymbol;
 import ghidra.program.model.pcode.LocalSymbolMap;
 import ghidra.program.model.pcode.Varnode;
 import ghidra.util.task.DummyCancellableTaskMonitor;
@@ -48,18 +50,107 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 
 	private boolean debugPrintPCode = false;
 	private final Program program;
+	private final DwarfRegistryResolver registers;
 	private final Map<Function, FunctionInfo> functions = new HashMap<>();
 
-	public GhidraGlobalDecompiler(Program program) {
+	// We need to use the full class name here as Ghidra had the great idea
+	// of reusing names from the Java Standard Library and now there are import conflicts
+	private final java.util.function.Function<Object, TypeNode> converter;
+
+	public GhidraGlobalDecompiler(Program program, GirdlTypeAdapter adapter) {
 		this.program = program;
+		this.registers = new DwarfRegistryResolver(program.getLanguage());
+		this.converter = adapter.getTypeConverter();
 	}
 
-	public SourceFactory dump(GirdlTypeAdapter adapter, long offset) {
+	public static class FunctionRange {
+		public final Function function;
+		public final long start;
+		public final long end;
 
-		DwarfRegistryResolver registers = new DwarfRegistryResolver(program.getLanguage());
+		public FunctionRange(Function function, long startAddress, long endAddress) {
+			this.function = function;
+			this.start = startAddress;
+			this.end = endAddress;
+		}
+
+		public static FunctionRange of(Function function) {
+			final long start = function.getEntryPoint().getOffset();
+			final long length = function.getBody().getNumAddresses();
+
+			return new FunctionRange(function, start, start + length);
+		}
+
+		public String where() {
+			return "0x" + Long.toHexString(start);
+		}
+	}
+
+	private Optional<FunctionNode.Variable> processVarnode(Varnode varnode, HighSymbol symbol, FunctionRange info, PcodeUtils.RangeMap ranges, long offset) {
+
+		final Address address = varnode.getAddress();
+		final StaticStorage varnodeStorage;
+
+		if (varnode.isConstant()) {
+			varnodeStorage = Storage.ofConst(varnode.getOffset());
+		} else if (varnode.isRegister()) {
+			varnodeStorage = Storage.ofDwarfRegister(registers.getDwarfRegister(program.getRegister(varnode)));
+		} else if (address.isStackAddress()) {
+			varnodeStorage = Storage.ofStack(address.getOffset() - address.getPointerSize());
+		} else {
+
+			// unsupported storage, completely skip this variable from output
+			Logger.warn(this, "Unknown storage for varnode " + symbol.getName() + ": " + varnode + ", from function '" + info.function.getName() + "'");
+			return Optional.empty();
+		}
+
+		var range = ranges.getRangeFor(varnode.getAddress()).orElse(PcodeUtils.INVARIANT);
+		Storage storage = range.wrap(symbol, varnodeStorage, info.start, info.end, offset);
+
+		return Optional.of(new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), storage, symbol.isParameter()));
+
+	}
+
+	private void processResults(Function function, DecompileResults res, SourceFactory source, long offset) {
+
+		// add a bit of spacing to make the source more readable
+		source.addEmpty();
+		source.addEmpty();
+
+		final FunctionRange info = FunctionRange.of(function);
+
+		if (!res.decompileCompleted()) {
+			source.addLine("// Failed to decompile " + info.where() + ": " + res.getErrorMessage());
+			return;
+		}
+
+		if (debugPrintPCode) {
+			PcodeUtils.dump(res.getHighFunction());
+		}
+
+		final LocalSymbolMap map = res.getHighFunction().getLocalSymbolMap();
+		final List<FunctionNode.Variable> locals = new ArrayList<>();
+		final PcodeUtils.RangeMap ranges = PcodeUtils.toVarnodeRangeMap(res.getHighFunction().getPcodeOps());
+
+		// process parameters and local variables
+		map.getSymbols().forEachRemaining(symbol -> {
+			for (Varnode varnode : symbol.getStorage().getVarnodes()) {
+				processVarnode(varnode, symbol, info, ranges, offset).ifPresent(locals::add);
+			}
+		});
+
+		functions.put(function, new FunctionInfo(Collections.unmodifiableList(locals)));
+
+		source.addLine("// Decompiled from address " + info.where());
+		appendSource(source, res);
+
+	}
+
+	public SourceFactory dump(long offset) {
+
+		functions.clear();
+
 		SourceFactory source = new SourceFactory();
-		var converter = adapter.getTypeConverter();
-
 		DecompileOptions opts = new DecompileOptions();
 		opts.grabFromProgram(program);
 
@@ -74,68 +165,13 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 		TaskMonitor monitor = new DummyCancellableTaskMonitor();
 
 		for (Function function : fit) {
-
 			if (function.isExternal() || function.isThunk()) {
 				continue;
 			}
 
-			DecompileResults res = ifc.decompileFunction(function, 30, monitor);
+			final DecompileResults res = ifc.decompileFunction(function, 30, monitor);
 
-			// add a bit of spacing to make the source more readable
-			source.addEmpty();
-			source.addEmpty();
-
-			final long functionStartAddress = function.getEntryPoint().getOffset();
-			final long functionEndAddress = functionStartAddress + function.getBody().getNumAddresses();
-
-			String where = "0x" + Long.toHexString(functionStartAddress);
-
-			if (!res.decompileCompleted()) {
-				source.addLine("// Failed to decompile " + where + ": " + res.getErrorMessage());
-				continue;
-			}
-
-			if (debugPrintPCode) {
-				PcodeUtils.dump(res.getHighFunction());
-			}
-
-			final LocalSymbolMap map = res.getHighFunction().getLocalSymbolMap();
-			final List<FunctionNode.Variable> locals = new ArrayList<>();
-			final var initials = PcodeUtils.toVarnodeRangeMap(res.getHighFunction().getPcodeOps());
-
-			map.getSymbols().forEachRemaining(symbol -> {
-
-				for (Varnode varnode : symbol.getStorage().getVarnodes()) {
-
-					final Address address = varnode.getAddress();
-					final StaticStorage varnodeStorage;
-
-					if (varnode.isConstant()) {
-						varnodeStorage = Storage.ofConst(varnode.getOffset());
-					} else if (varnode.isRegister()) {
-						varnodeStorage = Storage.ofDwarfRegister(registers.getDwarfRegister(program.getRegister(varnode)));
-					} else if (address.isStackAddress()) {
-						varnodeStorage = Storage.ofStack(address.getOffset() - address.getPointerSize());
-					} else {
-
-						// unsupported storage, completely skip this variable from output
-						Logger.warn(this, "Unknown storage for varnode " + symbol.getName() + ": " + varnode + ", from function '" + function.getName() + "'");
-						continue;
-					}
-
-					var range = initials.getRangeFor(varnode.getAddress()).orElse(PcodeUtils.INVARIANT);
-					Storage storage = range.wrap(symbol, varnodeStorage, functionStartAddress, functionEndAddress, offset);
-
-					locals.add(new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), storage, symbol.isParameter()));
-
-				}
-			});
-
-			functions.put(function, new FunctionInfo(Collections.unmodifiableList(locals)));
-
-			source.addLine("// Decompiled from address " + where);
-			appendSource(source, res);
-
+			processResults(function, res, source, offset);
 		}
 
 		return source;

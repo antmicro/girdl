@@ -50,9 +50,9 @@ public final class DwarfExporter extends DwarfFile {
 		try (DwarfExporter exporter = new DwarfExporter(dwarf, program)) {
 			GirdlTypeAdapter adapter = new GirdlTypeAdapter();
 
-			GhidraGlobalDecompiler decompiler = new GhidraGlobalDecompiler(program);
+			GhidraGlobalDecompiler decompiler = new GhidraGlobalDecompiler(program, adapter);
 
-			SourceFactory source = decompiler.dump(adapter, offset);
+			SourceFactory source = decompiler.dump(offset);
 			source.saveSource(dwarf.getAbsolutePath() + ".c");
 
 			LineProgrammer programmer = exporter.createLineProgram();
