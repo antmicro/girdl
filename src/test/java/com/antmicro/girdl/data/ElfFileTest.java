@@ -615,17 +615,16 @@ public class ElfFileTest {
 
 		FunctionNode function = FunctionNode.of(BaseNode.LONG, "my_func");
 		function.setCodeSpan(0x100, 0x200);
-		function.addParameter("c", BaseNode.INT, Storage.ofRanges(
-				DynamicStorage.newRange(0x200, 0x150, Storage.ofStack(10))
-		));
 
 		Assertions.assertThrows(RuntimeException.class, () -> {
-
-			try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
-				dwarf.createType(function);
-			}
-
+			function.addParameter("c", BaseNode.INT, Storage.ofRanges(
+					DynamicStorage.newRange(0x200, 0x150, Storage.ofStack(10))
+			));
 		});
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			dwarf.createType(function);
+		}
 
 	}
 

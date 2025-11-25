@@ -438,9 +438,7 @@ public class DwarfFile extends ElfFile {
 		builder.add(DwarfAttr.NAME, DwarfForm.STRING, type.name);
 		builder.add(DwarfAttr.LOW_PC, DwarfForm.DATA8, buffer -> buffer.putLong(type.low));
 		builder.add(DwarfAttr.HIGH_PC, DwarfForm.DATA8, buffer -> buffer.putLong(type.high));
-		builder.add(DwarfAttr.FRAME_BASE, DwarfForm.EXPRLOC, DwarfExpression.from(expr -> {
-			expr.putByte(DwarfOp.CALL_FRAME_CFA);
-		}));
+		builder.add(DwarfAttr.FRAME_BASE, DwarfForm.EXPRLOC, DwarfExpression.from(expr -> expr.putByte(DwarfOp.CALL_FRAME_CFA)));
 
 		if (returnType != null) {
 			builder.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> returnType.from(info)));
@@ -458,19 +456,26 @@ public class DwarfFile extends ElfFile {
 					.add(DwarfAttr.NAME, DwarfForm.STRING, entry.name)
 					.add(DwarfAttr.TYPE, DwarfForm.REF4, buffer -> buffer.putInt(() -> parameterBuffer.from(info)));
 
-			if (storage.hasLocation()) {
-				if (storage instanceof DynamicStorage where) {
+			try {
+				if (storage.hasLocation()) {
+					if (storage instanceof DynamicStorage where) {
 
-					LocationList list = createLocationLists().addLocationSet();
+						LocationList list = createLocationLists().addLocationSet();
 
-					for (DynamicStorage.Range range : where.ranges) {
-						list.addBounded(range.start, range.end, range.storage.asExpression(getAddressWidth()));
+						for (DynamicStorage.Range range : where.ranges) {
+							list.addBounded(range.start, range.end, range.storage.asExpression(getAddressWidth()));
+						}
+
+						paramBuilder.add(DwarfAttr.LOCATION, DwarfForm.SEC_OFFSET, buffer -> buffer.putInt(list.offset));
+					} else {
+						paramBuilder.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC, DwarfExpression.from(storage.asExpression(getAddressWidth())));
 					}
-
-					paramBuilder.add(DwarfAttr.LOCATION, DwarfForm.SEC_OFFSET, buffer -> buffer.putInt(list.offset));
-				} else {
-					paramBuilder.add(DwarfAttr.LOCATION, DwarfForm.EXPRLOC, DwarfExpression.from(storage.asExpression(getAddressWidth())));
 				}
+
+				// rethrow with more useful details
+			} catch (Exception e) {
+				paramBuilder.done();
+				throw new RuntimeException("Error creating local '" + entry.name + "' for function: " + type.name, e);
 			}
 
 			if (storage instanceof ConstStorage where) {

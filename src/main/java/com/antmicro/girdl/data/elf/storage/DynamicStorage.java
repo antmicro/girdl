@@ -47,6 +47,10 @@ public class DynamicStorage extends Storage {
 	}
 
 	public static Range newRange(long start, long end, StaticStorage storage) {
+		if (start > end) {
+			throw new RuntimeException("Invalid range, the range ends (" + Long.toHexString(end) + ") before it starts (" + Long.toHexString(start) + ")!");
+		}
+
 		return new Range(start, end, storage);
 	}
 

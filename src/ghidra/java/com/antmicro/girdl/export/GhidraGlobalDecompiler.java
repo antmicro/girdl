@@ -100,7 +100,7 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 		} else {
 
 			// unsupported storage, completely skip this variable from output
-			Logger.warn(this, "Unknown storage for varnode " + symbol.getName() + ": " + varnode + ", from function '" + info.function.getName() + "'");
+			Logger.warn(this, "Unknown storage for varnode " + symbol.getName() + ": " + PcodeUtils.varnodeToString(varnode) + ", from function '" + info.function.getName() + "'");
 			return Optional.empty();
 		}
 
@@ -130,12 +130,16 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 
 		final LocalSymbolMap map = res.getHighFunction().getLocalSymbolMap();
 		final List<FunctionNode.Variable> locals = new ArrayList<>();
-		final PcodeUtils.RangeMap ranges = PcodeUtils.toVarnodeRangeMap(res.getHighFunction().getPcodeOps());
+		final PcodeUtils.RangeMap ranges = PcodeUtils.toVarnodeRangeMap(res.getHighFunction());
 
 		// process parameters and local variables
 		map.getSymbols().forEachRemaining(symbol -> {
 			for (Varnode varnode : symbol.getStorage().getVarnodes()) {
-				processVarnode(varnode, symbol, info, ranges, offset).ifPresent(locals::add);
+				try {
+					processVarnode(varnode, symbol, info, ranges, offset).ifPresent(locals::add);
+				} catch (Exception e) {
+					Logger.error(this, "Failed to process local symbol: " + symbol.getName() + ", for: " + function.getName() + ", " + e.getMessage());
+				}
 			}
 		});
 
@@ -146,7 +150,7 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 
 	}
 
-	public SourceFactory dump(DwarfExportConfig config) {
+	public SourceFactory dump(DwarfExportConfig config, TaskMonitor monitor) {
 
 		final long offset = config.address;
 		functions.clear();
@@ -163,16 +167,25 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 		ifc.openProgram(program);
 
 		FunctionIterator fit = program.getFunctionManager().getFunctions(true);
-		TaskMonitor monitor = new DummyCancellableTaskMonitor();
+		TaskMonitor c = new DummyCancellableTaskMonitor();
+
+		int total = program.getFunctionManager().getFunctionCount();
+		monitor.setMaximum(total);
 
 		for (Function function : fit) {
+			monitor.incrementProgress();
+
 			if (function.isExternal() || function.isThunk()) {
 				continue;
 			}
 
-			final DecompileResults res = ifc.decompileFunction(function, 30, monitor);
+			final DecompileResults res = ifc.decompileFunction(function, 30, c);
 
-			processResults(function, res, source, offset);
+			try {
+				processResults(function, res, source, offset);
+			} catch (Exception e) {
+				Logger.error(this, "Failed to process function decompilation result for: " + function.getName() + ", " + e.getMessage());
+			}
 		}
 
 		return source;

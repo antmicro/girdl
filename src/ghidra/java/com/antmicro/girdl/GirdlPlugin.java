@@ -33,6 +33,10 @@ import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.util.HelpLocation;
+import ghidra.util.Msg;
+import ghidra.util.task.Task;
+import ghidra.util.task.TaskLauncher;
+import ghidra.util.task.TaskMonitor;
 
 import java.io.File;
 import java.util.Optional;
@@ -57,7 +61,7 @@ public class GirdlPlugin extends ProgramPlugin {
 
 	private void createActions() {
 
-		DockingAction helloAction = new DockingAction("Export DWARF", getName()) {
+		DockingAction action = new DockingAction("Export DWARF", getName()) {
 
 			private File askForExportFile() {
 
@@ -93,19 +97,28 @@ public class GirdlPlugin extends ProgramPlugin {
 				}
 
 				var optional = askForDwarfConfig();
-				Stopwatch stopwatch = Stopwatch.createStarted();
 
 				if (optional.isEmpty()) {
 					Logger.info(this, "Operation aborted");
 					return;
 				}
 
-				try {
-					DwarfExporter.dumpProgramDebugInfo(file, currentProgram, optional.get());
-					Logger.info(this, "Finished writing DWARF data in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
-				} catch (Exception e) {
-					Logger.error(this, "Can't write to '" + file.getPath() + "': " + e.getMessage());
-				}
+				TaskLauncher.launch(new Task("Exporting DWARF", true, true, false) {
+
+					@Override
+					public void run(TaskMonitor monitor) {
+						monitor.setMessage("Exporting DWARF...");
+						Stopwatch stopwatch = Stopwatch.createStarted();
+
+						try {
+							DwarfExporter.dumpProgramDebugInfo(file, currentProgram, optional.get(), monitor);
+							Logger.info(this, "Finished writing DWARF data in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
+						} catch (Exception e) {
+							Msg.showError(this, null, "DWARF Export", "Can't finish writing to '" + file.getPath() + "'", e);
+						}
+					}
+
+				});
 			}
 
 			@Override
@@ -115,10 +128,10 @@ public class GirdlPlugin extends ProgramPlugin {
 
 		};
 
-		helloAction.setEnabled(true);
-		helloAction.setMenuBarData(new MenuData(new String[] {ToolConstants.MENU_FILE, "Export to DWARF..."}, "Import Export"));
+		action.setEnabled(true);
+		action.setMenuBarData(new MenuData(new String[] {ToolConstants.MENU_FILE, "Export to DWARF..."}, "Import Export"));
 
-		tool.addAction(helloAction);
+		tool.addAction(action);
 
 	}
 

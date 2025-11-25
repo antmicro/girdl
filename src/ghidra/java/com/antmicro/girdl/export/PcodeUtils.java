@@ -22,14 +22,12 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.pcode.HighFunction;
 import ghidra.program.model.pcode.HighSymbol;
 import ghidra.program.model.pcode.PcodeOp;
-import ghidra.program.model.pcode.PcodeOpAST;
 import ghidra.program.model.pcode.Varnode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -123,11 +121,10 @@ public class PcodeUtils {
 	 * Create a map that identifies the program address where the first/last write operation
 	 * occurs to the given Address (register, stack, memory, ...).
 	 */
-	public static RangeMap toVarnodeRangeMap(Iterator<PcodeOpAST> ops) {
+	public static RangeMap toVarnodeRangeMap(HighFunction function) {
 		RangeMap map = new RangeMap();
 
-		ops.forEachRemaining(ast -> {
-
+		function.getPcodeOps().forEachRemaining(ast -> {
 			if (ast.isAssignment()) {
 				Varnode node = ast.getOutput();
 				long address = ast.getSeqnum().getTarget().getOffset();
@@ -143,7 +140,7 @@ public class PcodeUtils {
 	 * Convert varnode to a more readable form when possible,
 	 * otherwise just convert it directly to string as-is.
 	 */
-	private static String varnodeToString(Varnode varnode) {
+	public static String varnodeToString(Varnode varnode) {
 		if (varnode == null) {
 			return null;
 		}

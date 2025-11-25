@@ -26,6 +26,7 @@ import com.antmicro.girdl.model.type.FunctionNode;
 import com.antmicro.girdl.model.type.TypeNode;
 import com.antmicro.girdl.util.FunctionDetailProvider;
 import com.antmicro.girdl.util.log.Logger;
+import com.google.common.collect.Iterators;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.Undefined;
@@ -35,7 +36,9 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Equate;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolIterator;
+import ghidra.program.model.symbol.SymbolType;
 import ghidra.util.Msg;
+import ghidra.util.task.TaskMonitor;
 
 import java.io.File;
 import java.util.Iterator;
@@ -47,7 +50,7 @@ public final class DwarfExporter extends DwarfFile {
 		super(file, ArchitectureFinder.guessElfMachine(program, ElfMachine.NONE), program.getDefaultPointerSize() * 8);
 	}
 
-	public static void dumpProgramDebugInfo(File dwarf, Program program, DwarfExportConfig config) {
+	public static void dumpProgramDebugInfo(File dwarf, Program program, DwarfExportConfig config, TaskMonitor monitor) {
 
 		Logger.info(DwarfExporter.class, "Running DWARF export with config: " + config.toString());
 
@@ -57,13 +60,14 @@ public final class DwarfExporter extends DwarfFile {
 		}
 
 		try (DwarfExporter exporter = new DwarfExporter(dwarf, program)) {
-			GirdlTypeAdapter adapter = new GirdlTypeAdapter();
 
+			GirdlTypeAdapter adapter = new GirdlTypeAdapter();
 			GhidraGlobalDecompiler decompiler = new GhidraGlobalDecompiler(program, adapter);
 
 			if (config.shouldRunDecompiler()) {
+				monitor.setMessage("1/5 Generating source...");
 				Logger.info(decompiler, "Running decompiler for all known functions");
-				SourceFactory source = decompiler.dump(config);
+				SourceFactory source = decompiler.dump(config, monitor);
 
 				if (config.source) {
 					source.saveSource(dwarf.getAbsolutePath() + ".c");
@@ -79,7 +83,11 @@ public final class DwarfExporter extends DwarfFile {
 				}
 			}
 
-			exporter.createDebugFromProgram(program, config, decompiler, adapter);
+			monitor.setProgress(0);
+			exporter.createDebugFromProgram(program, config, decompiler, adapter, monitor);
+
+			monitor.setMessage("Serializing...");
+			monitor.setIndeterminate(true);
 		}
 	}
 
@@ -103,16 +111,20 @@ public final class DwarfExporter extends DwarfFile {
 
 	}
 
-	public void createDebugFromProgram(Program program, DwarfExportConfig config, FunctionDetailProvider provider, GirdlTypeAdapter adapter) {
+	public void createDebugFromProgram(Program program, DwarfExportConfig config, FunctionDetailProvider provider, GirdlTypeAdapter adapter, TaskMonitor monitor) {
 
+		monitor.setMaximum(3);
 		final Function<Object, TypeNode> converter = adapter.getTypeConverter();
 
 		/*
-		 * First convert and save all data types that we know of
-		 * not all of them will have a symbol but there is no reason to omit those.
+		 * First convert and save all data types that we know of,
+		 * not all of them will have a symbol but there is no reason to omit them.
 		 */
 
 		if (config.types) {
+			monitor.setMessage("2/5 Exporting types...");
+			monitor.incrementProgress();
+
 			Iterator<DataType> types = program.getDataTypeManager().getAllDataTypes();
 
 			while (types.hasNext()) {
@@ -122,15 +134,24 @@ public final class DwarfExporter extends DwarfFile {
 
 		/*
 		 * Next, we add all symbols (global variables, etc.) and their types (if
-		 * not yet seen before), we do however skip some of them, mainly assembly labels (by
-		 * the fact they have a null type).
+		 * not yet seen before), we do however skip some of them, mainly assembly labels,
+		 * functions (we handle them later separately) and other not-well defined ones (null type/address)
 		 */
+
+		monitor.setMessage("3/5 Exporting symbols...");
+		monitor.incrementProgress();
 
 		SymbolIterator symbols = program.getSymbolTable().getAllSymbols(true);
 
 		while (symbols.hasNext()) {
 			Symbol symbol = symbols.next();
 			Address address = symbol.getAddress();
+			SymbolType kind = symbol.getSymbolType();
+
+			// functions are handles separately later
+			if (kind == SymbolType.LABEL || kind == SymbolType.FUNCTION || address == null) {
+				continue;
+			}
 
 			if (symbol.isExternal()) {
 				Logger.debug(this, "Skipping external symbol: " + symbol.getName());
@@ -156,6 +177,9 @@ public final class DwarfExporter extends DwarfFile {
 		 */
 
 		if (config.equates) {
+			monitor.setMessage("4/5 Exporting equates...");
+			monitor.incrementProgress();
+
 			Iterator<Equate> equates = program.getEquateTable().getEquates();
 
 			while (equates.hasNext()) {
@@ -174,7 +198,13 @@ public final class DwarfExporter extends DwarfFile {
 
 		FunctionIterator functions = program.getFunctionManager().getFunctions(true);
 
+		int total = Iterators.size(program.getFunctionManager().getFunctions(true));
+		monitor.setMaximum(total + monitor.getProgress());
+		monitor.setMessage("5/5 Exporting functions...");
+
 		while (functions.hasNext()) {
+
+			monitor.incrementProgress();
 
 			// ghidra uses a somewhat terrible name 'Function' for the type here
 			// so we have to avoid specifying it directly here
