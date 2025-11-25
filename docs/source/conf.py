@@ -12,7 +12,7 @@ from antmicro_sphinx_utils.defaults import (
 )
 
 # General information about the project.
-project = u'girdl Plugin'
+project = u'girdl'
 basic_filename = u'girdl-docs'
 authors = u'Antmicro'
 copyright = f'{authors}, {datetime.now().year}'

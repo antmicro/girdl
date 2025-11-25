@@ -1,3 +1,4 @@
+# {{project}}
 ```{toctree}
 :maxdepth: 2
 
