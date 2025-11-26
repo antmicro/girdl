@@ -61,7 +61,7 @@ public class DynamicStorage extends Storage {
 
 	@Override
 	public boolean hasLocation() {
-		return isKnown();
+		return true;
 	}
 
 }

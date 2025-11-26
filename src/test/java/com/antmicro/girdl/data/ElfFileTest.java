@@ -714,4 +714,31 @@ public class ElfFileTest {
 
 	}
 
+	@Test
+	void testDwarfEmptyLocationRange() {
+
+		File temp = Util.createTempFile(".dwarf");
+
+		FunctionNode function = FunctionNode.of(BaseNode.LONG, "my_func");
+		function.setCodeSpan(0x100, 0x200);
+		function.addLocal("empty", BaseNode.INT, Storage.ofRanges());
+
+		try (DwarfFile dwarf = new DwarfFile(temp, ElfMachine.X86_64, 64)) {
+			dwarf.createType(function);
+		}
+
+		String all = Util.runCommand("readelf",  "-aw", temp.getAbsolutePath()).error();
+		Assertions.assertFalse(all.contains("Error"));
+		Assertions.assertFalse(all.contains("Warning"));
+
+		String debug = Util.runCommand("readelf", "-w", temp.getAbsolutePath()).output();
+		Assertions.assertTrue(debug.contains("<End of list>"));
+
+		Assertions.assertTrue(debug.contains("DW_TAG_variable"));
+		Assertions.assertTrue(debug.contains("DW_AT_name        : empty"));
+		Assertions.assertTrue(debug.contains("DW_AT_location     DW_FORM_sec_offset"));
+		Assertions.assertTrue(debug.contains("DW_AT_location    : 0xc (location list"));
+
+	}
+
 }

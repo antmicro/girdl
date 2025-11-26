@@ -88,10 +88,14 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 	}
 
 	private Storage wrapVarnodeStorage(PcodeUtils.RangeMap ranges, Address address, HighSymbol symbol, StaticStorage storage, FunctionRange info, long offset) {
+		if (!storage.isKnown()) {
+			return Storage.ofRanges(); // empty range set will show the variable as <optimized out>
+		}
+
 		return storage.isUseSiteInvariant() ? storage : ranges.getRangeFor(address).orElse(PcodeUtils.INVARIANT).wrap(symbol, storage, info.start, info.end, offset);
 	}
 
-	private Optional<FunctionNode.Variable> processVarnode(Varnode varnode, HighSymbol symbol, FunctionRange info, PcodeUtils.RangeMap ranges, long offset) {
+	private FunctionNode.Variable processVarnode(Varnode varnode, HighSymbol symbol, FunctionRange info, PcodeUtils.RangeMap ranges, long offset) {
 
 		final Address address = varnode.getAddress();
 		final StaticStorage storage;
@@ -105,12 +109,13 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 		} else if (varnode.isAddress()) {
 			storage = Storage.ofAddress(address.getOffset());
 		} else {
+
 			// unsupported storage, completely skip this variable from output
 			Logger.warn(this, "Unknown storage for varnode " + symbol.getName() + ": " + PcodeUtils.varnodeToString(varnode) + ", from function '" + info.function.getName() + "'");
-			return Optional.empty();
+			storage = Storage.ofUnknown();
 		}
 
-		return Optional.of(new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), wrapVarnodeStorage(ranges, address, symbol, storage, info, offset), symbol.isParameter()));
+		return new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), wrapVarnodeStorage(ranges, address, symbol, storage, info, offset), symbol.isParameter());
 
 	}
 
@@ -140,7 +145,7 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 		map.getSymbols().forEachRemaining(symbol -> {
 			for (Varnode varnode : symbol.getStorage().getVarnodes()) {
 				try {
-					processVarnode(PcodeUtils.findAlternativeVarnode(varnode, high), symbol, info, ranges, offset).ifPresent(locals::add);
+					locals.add(processVarnode(PcodeUtils.findAlternativeVarnode(varnode, high), symbol, info, ranges, offset));
 				} catch (Exception e) {
 					Logger.error(this, "Failed to process local symbol: " + symbol.getName() + ", for: " + function.getName() + ", " + e.getMessage());
 				}
