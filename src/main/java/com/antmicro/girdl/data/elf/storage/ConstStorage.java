@@ -44,4 +44,9 @@ public class ConstStorage extends StaticStorage {
 				.andThen(expr -> expr.putByte(DwarfOp.STACK_VALUE));
 	}
 
+	@Override
+	public boolean isUseSiteInvariant() {
+		return true;
+	}
+
 }

@@ -18,10 +18,12 @@ package com.antmicro.girdl.export;
 import com.antmicro.girdl.data.elf.Storage;
 import com.antmicro.girdl.data.elf.storage.DynamicStorage;
 import com.antmicro.girdl.data.elf.storage.StaticStorage;
+import com.antmicro.girdl.util.log.Logger;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.pcode.HighFunction;
 import ghidra.program.model.pcode.HighSymbol;
 import ghidra.program.model.pcode.PcodeOp;
+import ghidra.program.model.pcode.PcodeOpAST;
 import ghidra.program.model.pcode.Varnode;
 
 import java.util.ArrayList;
@@ -134,6 +136,54 @@ public class PcodeUtils {
 		});
 
 		return map;
+	}
+
+	/**
+	 * Look for an alternative way to express some varnodes that can't be stored otherwise
+	 * currently this only replaces the UNIQUE varnodes.
+	 */
+	public static Varnode findAlternativeVarnode(Varnode original, HighFunction high) {
+
+		if (original == null || !original.isUnique()) {
+			return original;
+		}
+
+		Address address = original.getAddress();
+		var ops = high.getPcodeOps();
+		int writes = 0;
+		Varnode alternative = null;
+
+		while (ops.hasNext()) {
+			PcodeOpAST ast = ops.next();
+			int opcode = ast.getOpcode();
+			Varnode output = ast.getOutput();
+
+			// this effectively checks if output == null
+			if (!ast.isAssignment()) {
+				continue;
+			}
+
+			// if our varnode is being written to
+			if (address.equals(output.getAddress())) {
+
+				// direct write to the unique from another location
+				// that means that this other location has our value
+				if (opcode == PcodeOp.COPY) {
+					alternative = ast.getInputs()[0];
+				}
+
+				writes ++;
+			}
+		}
+
+		// if there were more writes than just the once copy
+		// then it gets a bit tricky, avoid for now
+		if (writes == 1 && alternative != null) {
+			Logger.info(PcodeUtils.class, "Replaced varnode: " + varnodeToString(original) + " with varnode: " + varnodeToString(alternative) + " in function: " + high.getFunction().getName());
+			return findAlternativeVarnode(alternative, high);
+		}
+
+		return original;
 	}
 
 	/**

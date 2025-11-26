@@ -37,4 +37,9 @@ public class UnknownStorage extends StaticStorage {
 		return false;
 	}
 
+	@Override
+	public boolean isUseSiteInvariant() {
+		return true;
+	}
+
 }

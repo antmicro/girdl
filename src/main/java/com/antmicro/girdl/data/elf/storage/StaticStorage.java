@@ -28,4 +28,9 @@ public abstract class StaticStorage extends Storage {
 		return true;
 	}
 
+	/// Return true if this value doesn't depend on usage location
+	public boolean isUseSiteInvariant() {
+		return false;
+	}
+
 }

@@ -33,6 +33,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionIterator;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.pcode.HighFunction;
 import ghidra.program.model.pcode.HighSymbol;
 import ghidra.program.model.pcode.LocalSymbolMap;
 import ghidra.program.model.pcode.Varnode;
@@ -86,28 +87,30 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 		}
 	}
 
+	private Storage wrapVarnodeStorage(PcodeUtils.RangeMap ranges, Address address, HighSymbol symbol, StaticStorage storage, FunctionRange info, long offset) {
+		return storage.isUseSiteInvariant() ? storage : ranges.getRangeFor(address).orElse(PcodeUtils.INVARIANT).wrap(symbol, storage, info.start, info.end, offset);
+	}
+
 	private Optional<FunctionNode.Variable> processVarnode(Varnode varnode, HighSymbol symbol, FunctionRange info, PcodeUtils.RangeMap ranges, long offset) {
 
 		final Address address = varnode.getAddress();
-		final StaticStorage varnodeStorage;
+		final StaticStorage storage;
 
 		if (varnode.isConstant()) {
-			varnodeStorage = Storage.ofConst(varnode.getOffset());
+			storage = Storage.ofConst(varnode.getOffset());
 		} else if (varnode.isRegister()) {
-			varnodeStorage = Storage.ofDwarfRegister(registers.getDwarfRegister(program.getRegister(varnode)));
+			storage = Storage.ofDwarfRegister(registers.getDwarfRegister(program.getRegister(varnode)));
 		} else if (address.isStackAddress()) {
-			varnodeStorage = Storage.ofStack(address.getOffset() - address.getPointerSize());
+			storage = Storage.ofStack(address.getOffset() - address.getPointerSize());
+		} else if (varnode.isAddress()) {
+			storage = Storage.ofAddress(address.getOffset());
 		} else {
-
 			// unsupported storage, completely skip this variable from output
 			Logger.warn(this, "Unknown storage for varnode " + symbol.getName() + ": " + PcodeUtils.varnodeToString(varnode) + ", from function '" + info.function.getName() + "'");
 			return Optional.empty();
 		}
 
-		var range = ranges.getRangeFor(varnode.getAddress()).orElse(PcodeUtils.INVARIANT);
-		Storage storage = range.wrap(symbol, varnodeStorage, info.start, info.end, offset);
-
-		return Optional.of(new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), storage, symbol.isParameter()));
+		return Optional.of(new FunctionNode.Variable(symbol.getName(), converter.apply(symbol.getDataType()), wrapVarnodeStorage(ranges, address, symbol, storage, info, offset), symbol.isParameter()));
 
 	}
 
@@ -128,15 +131,16 @@ public class GhidraGlobalDecompiler implements FunctionDetailProvider {
 			PcodeUtils.dump(res.getHighFunction());
 		}
 
-		final LocalSymbolMap map = res.getHighFunction().getLocalSymbolMap();
+		final HighFunction high = res.getHighFunction();
+		final LocalSymbolMap map = high.getLocalSymbolMap();
 		final List<FunctionNode.Variable> locals = new ArrayList<>();
-		final PcodeUtils.RangeMap ranges = PcodeUtils.toVarnodeRangeMap(res.getHighFunction());
+		final PcodeUtils.RangeMap ranges = PcodeUtils.toVarnodeRangeMap(high);
 
 		// process parameters and local variables
 		map.getSymbols().forEachRemaining(symbol -> {
 			for (Varnode varnode : symbol.getStorage().getVarnodes()) {
 				try {
-					processVarnode(varnode, symbol, info, ranges, offset).ifPresent(locals::add);
+					processVarnode(PcodeUtils.findAlternativeVarnode(varnode, high), symbol, info, ranges, offset).ifPresent(locals::add);
 				} catch (Exception e) {
 					Logger.error(this, "Failed to process local symbol: " + symbol.getName() + ", for: " + function.getName() + ", " + e.getMessage());
 				}

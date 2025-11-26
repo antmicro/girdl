@@ -33,8 +33,13 @@ public class AddressStorage extends StaticStorage {
 	}
 
 	@Override
-	public Consumer<SegmentedBuffer> asExpression(int width) {
-		return expr -> expr.putByte(DwarfOp.ADDR).putDynamic(width, address);
+	public Consumer<SegmentedBuffer> asExpression(int bytes) {
+		return expr -> expr.putByte(DwarfOp.ADDR).putDynamic(bytes * 8, address);
+	}
+
+	@Override
+	public boolean isUseSiteInvariant() {
+		return true;
 	}
 
 }
