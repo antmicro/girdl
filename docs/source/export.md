@@ -6,10 +6,9 @@ The whole process is described step-by-step below:
 
 1) File > Export to DWARF...
 2) Select target file location
+3) Select what you want to export (don't change the setting to export everything)
+4) Click OK
 3) Load your executable into GDB (or alternative debugger)
-4) Use the `starti` command to load the program into memory and stop at the first instruction
-5) Use the `info file` command and copy the "Entrypoint" value, (this **needs** to be done after step 4)
-6) Paste the value into the "Entrypoint" text box in Ghidra
-7) Select the entrypoint function from the dropdown menu "Offset", this will typically be the function called "entry"
+4) Use the `add-symbol-file <path>` command with the path to the generated file.
 
-Then to import this data into GDB, use the `add-symbol-file <path>` command with the path to the generated file.
+You should now be able to use the generated debug symbols in the debugging session.
