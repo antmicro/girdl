@@ -50,6 +50,7 @@ public class SegmentedFile implements AutoCloseable {
 	@Override
 	public void close() {
 		try {
+			buffer.cache();
 			this.output.write(buffer.toBytes(0));
 			this.output.flush();
 			this.output.close();

@@ -207,6 +207,13 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 	public abstract DataWriter putLink(int bytes, Consumer<ByteBuffer> linker);
 
 	/**
+	 * Discard the current cache (if present) and schedule all
+	 * nodes for caching. When offset or size is requested again
+	 * the value will be computed only once and then saved.
+	 */
+	public abstract void cache();
+
+	/**
 	 * Check if the buffer size is not depended on its position in the final output,
 	 * this effectually check if there are any alignment constrains placed on this buffer or
 	 * any of its children.

@@ -25,6 +25,16 @@ import java.util.function.Consumer;
 
 public final class SegmentedBuffer extends DataWriter {
 
+	private static final int CACHE_ENABLE = 1;
+	private static final int CACHE_SIZE = 2;
+	private static final int CACHE_OUTER = 4;
+	private static final int CACHE_OFFSET = 8;
+
+	private int cache = 0;
+	private int cachedOffset = 0;
+	private int cacheSize = 0;
+	private int cacheOuter = 0;
+
 	private String name;
 	private int alignment = 1;
 	private ContentPolicy policy = ContentPolicy.MIXED;
@@ -32,6 +42,10 @@ public final class SegmentedBuffer extends DataWriter {
 	private final ByteOrder order;
 
 	private int maxUpAlign = 1;
+
+	private boolean checkCacheFlag(int flag) {
+		return (cache & flag) != 0;
+	}
 
 	private int computeMaxUpAlignment() {
 		int align = alignment;
@@ -168,10 +182,19 @@ public final class SegmentedBuffer extends DataWriter {
 
 	@Override
 	public int size() {
+		if (checkCacheFlag(CACHE_SIZE)) {
+			return cacheSize;
+		}
+
 		int bytes = 0;
 
 		for (DataWriter writer : blocks) {
 			bytes += writer.size();
+		}
+
+		if (checkCacheFlag(CACHE_ENABLE)) {
+			cacheSize = bytes;
+			cache |= CACHE_SIZE;
 		}
 
 		return bytes;
@@ -179,11 +202,26 @@ public final class SegmentedBuffer extends DataWriter {
 
 	@Override
 	public int offset() {
-		return Math.toIntExact(MathHelper.alignUp(super.offset(), alignment));
+		if (checkCacheFlag(CACHE_OFFSET)) {
+			return cachedOffset;
+		}
+
+		int offset = Math.toIntExact(MathHelper.alignUp(super.offset(), alignment));
+
+		if (checkCacheFlag(CACHE_ENABLE)) {
+			cachedOffset = offset;
+			cache |= CACHE_OFFSET;
+		}
+
+		return offset;
 	}
 
 	@Override
 	public int outerSize(int offset) {
+		if (checkCacheFlag(CACHE_OUTER)) {
+			return cacheOuter;
+		}
+
 		int bytes = Math.toIntExact(MathHelper.getPadding(offset, alignment));
 
 		for (DataWriter writer : blocks) {
@@ -191,6 +229,11 @@ public final class SegmentedBuffer extends DataWriter {
 
 			offset += gain;
 			bytes += gain;
+		}
+
+		if (checkCacheFlag(CACHE_ENABLE)) {
+			cacheOuter = bytes;
+			cache |= CACHE_OUTER;
 		}
 
 		return bytes;
@@ -250,6 +293,15 @@ public final class SegmentedBuffer extends DataWriter {
 	public SegmentedBuffer putLink(int bytes, Consumer<ByteBuffer> linker) {
 		getBufferBlock().putLink(bytes, linker);
 		return this;
+	}
+
+	@Override
+	public void cache() {
+		cache = CACHE_ENABLE;
+
+		for (DataWriter writer : blocks) {
+			writer.cache();
+		}
 	}
 
 	@Override

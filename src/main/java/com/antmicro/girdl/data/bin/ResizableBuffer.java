@@ -166,6 +166,11 @@ public final class ResizableBuffer extends DataWriter {
 	}
 
 	@Override
+	public void cache() {
+		// nothing to do here!
+	}
+
+	@Override
 	public boolean isPositional() {
 		return false;
 	}
