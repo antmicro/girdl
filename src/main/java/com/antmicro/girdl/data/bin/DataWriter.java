@@ -40,6 +40,20 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 	abstract byte[] toBytes(int offset);
 	abstract void assertContentPolicy(ContentPolicy policy);
 
+	protected final int offsetToMember(DataWriter child) {
+		int address = offset();
+
+		for (DataWriter writer : children()) {
+			if (writer == child) {
+				return address;
+			}
+
+			address += writer.outerSize(address);
+		}
+
+		throw new RuntimeException("Unable to find offset of unrelated buffer!");
+	}
+
 	/**
 	 * Offset (start of in relation to the start of this buffer), in bytes, of the
 	 * given buffer, this value will change as data is being appended between the
@@ -49,11 +63,12 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 	 * @return Offset in bytes.
 	 */
 	public final int offsetOf(DataWriter child) {
-		int address = offset();
+		int start = isPositional() ? offset() : 0;
+		int address = start;
 
 		for (DataWriter writer : children()) {
 			if (writer == child) {
-				return address;
+				return address - start;
 			}
 
 			address += writer.outerSize(address);
@@ -84,12 +99,12 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 	/**
 	 * Offset, in bytes, of this buffer in relation to the start of the file,
 	 * this value will change as data is being appended between the
-	 * start of the file and start of the child buffer.
+	 * start of the file and start of this buffer.
 	 *
 	 * @return Offset in bytes.
 	 */
 	public int offset() {
-		return parent == null ? 0 : parent.offsetOf(this);
+		return parent == null ? 0 : parent.offsetToMember(this);
 	}
 
 	/**
@@ -100,6 +115,10 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 	 * @return Offset in bytes.
 	 */
 	public int from(DataWriter writer) {
+		if (writer.parent == this) {
+			return writer.offsetOf(this);
+		}
+
 		return offset() - writer.offset();
 	}
 
@@ -186,6 +205,13 @@ public abstract sealed class DataWriter permits ResizableBuffer, SegmentedBuffer
 	public abstract DataWriter putLong(long value);
 	public abstract DataWriter putFloat(float value);
 	public abstract DataWriter putLink(int bytes, Consumer<ByteBuffer> linker);
+
+	/**
+	 * Check if the buffer size is not depended on its position in the final output,
+	 * this effectually check if there are any alignment constrains placed on this buffer or
+	 * any of its children.
+	 */
+	public abstract boolean isPositional();
 
 	/**
 	 * Size of this buffer's content, including all descendants, in bytes.

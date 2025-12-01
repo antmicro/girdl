@@ -166,6 +166,11 @@ public final class ResizableBuffer extends DataWriter {
 	}
 
 	@Override
+	public boolean isPositional() {
+		return false;
+	}
+
+	@Override
 	public String toString() {
 		return "Buffer " + size() + " bytes, " + (linkers == null ? 0 : linkers.size()) + " links, " + order;
 	}

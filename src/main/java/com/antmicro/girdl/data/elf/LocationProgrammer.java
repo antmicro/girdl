@@ -19,15 +19,12 @@ import com.antmicro.girdl.data.bin.SegmentedBuffer;
 
 public final class LocationProgrammer extends Programmer {
 
-	private final SegmentedBuffer locations;
-
 	/// DWARF Specification 7.29
 	LocationProgrammer(SegmentedBuffer writer, int addressWidth) {
 		super(writer, addressWidth);
 
 		// omit location offset array
 		head.putInt(0);
-		locations = body.putSegment();
 	}
 
 	/**
@@ -35,8 +32,8 @@ public final class LocationProgrammer extends Programmer {
 	 * to reference it from DWARF expressions.
 	 */
 	public LocationList addLocationSet() {
-		final SegmentedBuffer buffer = locations.putSegment();
-		return new LocationList(buffer, buffer.offset() - head.offset(), addressWidth);
+		final SegmentedBuffer buffer = body.putSegment();
+		return new LocationList(buffer, body.offsetOf(buffer) + head.size(), addressWidth);
 	}
 
 }

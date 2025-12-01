@@ -31,6 +31,32 @@ public final class SegmentedBuffer extends DataWriter {
 	private final List<DataWriter> blocks = new ArrayList<>();
 	private final ByteOrder order;
 
+	private int maxUpAlign = 1;
+
+	private int computeMaxUpAlignment() {
+		int align = alignment;
+
+		for (DataWriter writer : blocks) {
+			if (writer instanceof SegmentedBuffer segmented) {
+				int next = segmented.computeMaxUpAlignment();
+
+				if (next > align) {
+					align = next;
+				}
+			}
+		}
+
+		return align;
+	}
+
+	private void updateAlignmentDown() {
+		this.maxUpAlign = computeMaxUpAlignment();
+
+		if (parent instanceof SegmentedBuffer segmented) {
+			segmented.updateAlignmentDown();
+		}
+	}
+
 	/**
 	 * @param parent Optional, use null for the root buffer.
 	 */
@@ -158,7 +184,16 @@ public final class SegmentedBuffer extends DataWriter {
 
 	@Override
 	public int outerSize(int offset) {
-		return Math.toIntExact(MathHelper.getPadding(offset, alignment) + size());
+		int bytes = Math.toIntExact(MathHelper.getPadding(offset, alignment));
+
+		for (DataWriter writer : blocks) {
+			int gain = writer.outerSize(offset);
+
+			offset += gain;
+			bytes += gain;
+		}
+
+		return bytes;
 	}
 
 	@Override
@@ -203,6 +238,7 @@ public final class SegmentedBuffer extends DataWriter {
 
 	public SegmentedBuffer setAlignment(int alignment) {
 		this.alignment = alignment;
+		updateAlignmentDown();
 		return this;
 	}
 
@@ -214,6 +250,11 @@ public final class SegmentedBuffer extends DataWriter {
 	public SegmentedBuffer putLink(int bytes, Consumer<ByteBuffer> linker) {
 		getBufferBlock().putLink(bytes, linker);
 		return this;
+	}
+
+	@Override
+	public boolean isPositional() {
+		return maxUpAlign >= 2;
 	}
 
 }
